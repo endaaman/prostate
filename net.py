@@ -1,106 +1,93 @@
-import os
-import numpy as np
-from PIL import Image, ImageOps, ImageDraw, ImageFont
-
 from torch import nn
-from torch.utils.data import Dataset, DataLoader
 from torch.nn import functional as F
+from torchvision import models
 import torch
-# from torchvision import models
-# import torchvision
+import torchvision
 
 
-TILE_SIZE = 224
+def conv3x3(in_, out):
+    return nn.Conv2d(in_, out, 3, padding=1)
 
-def load_images(base_dir):
-    case_names = os.listdir(base_dir)
-    yy = []
-    xx = []
-    names = []
-    for case_name in case_names:
-        case_dir = f'{base_dir}/{case_name}'
-        file_names = os.listdir(f'{case_dir}/y/')
-        i = 0
-        count = 0
-        for file_name in file_names:
-            i += 1
-            y_img = Image.open(f'{case_dir}/y/{file_name}')
-            y_img.load()
-            y_img_array = np.asarray(y_img)[:,:,:3]
-            n = np.count_nonzero(y_img_array)
-            if n < 2: # skip blank label image
-                continue
-            yy.append(y_img)
-            base_name, ext_name = os.path.splitext(file_name)
-            x_img = Image.open(f'{case_dir}/x/{base_name}.jpg')
-            x_img.load()
-            # x_img_array = np.asarray(x_img)[:,:,:3]
-            xx.append(x_img)
-            names.append(base_name)
-    # yy = np.array(yy)
-    # xx = np.array(xx)
-    return xx, yy, names
+class ConvRelu(nn.Module):
+    def __init__(self, in_, out):
+        super().__init__()
+        self.conv = conv3x3(in_, out)
+        self.activation = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.activation(x)
+        return x
+
+class DecoderBlock(nn.Module):
+    def __init__(self, in_channels, middle_channels, out_channels):
+        super().__init__()
+
+        self.block = nn.Sequential(
+            ConvRelu(in_channels, middle_channels),
+            nn.ConvTranspose2d(middle_channels, out_channels, kernel_size=3, stride=2, padding=1, output_padding=1),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        return self.block(x)
 
 
-class NormalDataset(Dataset):
-    def augment_image(self, img, op):
-        if op > 3:
-            img = ImageOps.mirror(img)
-        img = img.rotate(90 * (op % 4))
-        return img
+class UNet11(nn.Module):
+    def __init__(self, num_filters=32, pretrained=False):
+        """
+        :param num_classes:
+        :param num_filters:
+        :param pretrained:
+            False - no pre-trained network is used
+            True  - encoder is pre-trained with VGG11
+        """
+        super().__init__()
+        self.pool = nn.MaxPool2d(2, 2)
 
-    def __init__(self):
-        self.xx, self.yy, self.names = load_images('./train/224')
+        self.encoder = models.vgg11(pretrained=pretrained).features
 
-    def __len__(self):
-        return len(self.yy)
+        self.relu = self.encoder[1]
+        self.conv1 = self.encoder[0]
+        self.conv2 = self.encoder[3]
+        self.conv3s = self.encoder[6]
+        self.conv3 = self.encoder[8]
+        self.conv4s = self.encoder[11]
+        self.conv4 = self.encoder[13]
+        self.conv5s = self.encoder[16]
+        self.conv5 = self.encoder[18]
 
-    def __getitem__(self, idx):
-        i = np.random.randint(0, len(self.yy))
-        op = np.random.randint(0, 8)
-        x_image = self.augment_image(self.xx[i], op)
-        y_image = self.augment_image(self.yy[i], op)
-        return (x_image, y_image)
+        self.center = DecoderBlock(num_filters * 8 * 2, num_filters * 8 * 2, num_filters * 8)
+        self.dec5 = DecoderBlock(num_filters * (16 + 8), num_filters * 8 * 2, num_filters * 8)
+        self.dec4 = DecoderBlock(num_filters * (16 + 8), num_filters * 8 * 2, num_filters * 4)
+        self.dec3 = DecoderBlock(num_filters * (8 + 4), num_filters * 4 * 2, num_filters * 2)
+        self.dec2 = DecoderBlock(num_filters * (4 + 2), num_filters * 2 * 2, num_filters)
+        self.dec1 = ConvRelu(num_filters * (2 + 1), num_filters)
 
+        self.final = nn.Conv2d(num_filters, 1, kernel_size=1)
 
-class LaidDataset(Dataset):
-    def combine_images(self, images, operations):
-        size = images[0].size[0]
-        image = Image.new('RGBA', (size * 2, size * 2), (255, 255, 255))
-        for i, img in enumerate(images):
-            op = operations[i]
-            if op > 3:
-                img = ImageOps.mirror(img)
-            img = img.rotate(90 * (op % 4))
-            pos = ((i // 2) * size, (i % 2) * size)
-            image.paste(img, pos)
-        return image
+    def forward(self, x):
+        conv1 = self.relu(self.conv1(x))
+        conv2 = self.relu(self.conv2(self.pool(conv1)))
+        conv3s = self.relu(self.conv3s(self.pool(conv2)))
+        conv3 = self.relu(self.conv3(conv3s))
+        conv4s = self.relu(self.conv4s(self.pool(conv3)))
+        conv4 = self.relu(self.conv4(conv4s))
+        conv5s = self.relu(self.conv5s(self.pool(conv4)))
+        conv5 = self.relu(self.conv5(conv5s))
 
-    def __init__(self):
-        self.xx, self.yy, self.names = load_images('./train/112')
+        center = self.center(self.pool(conv5))
 
-    def __len__(self):
-        return len(self.yy)
-
-    def __getitem__(self, idx):
-        ii = np.random.choice(list(range(len(self.yy))), 4, replace=False)
-        x_images = [self.xx[i] for i in ii]
-        y_images = [self.yy[i] for i in ii]
-        names = [self.names[i] for i in ii]
-        operations = np.random.choice(list(range(8)), 4)
-        x_image = self.combine_images(x_images, operations)
-        y_image = self.combine_images(y_images, operations)
-        return (x_image, y_image)
+        dec5 = self.dec5(torch.cat([center, conv5], 1))
+        dec4 = self.dec4(torch.cat([dec5, conv4], 1))
+        dec3 = self.dec3(torch.cat([dec4, conv3], 1))
+        dec2 = self.dec2(torch.cat([dec3, conv2], 1))
+        dec1 = self.dec1(torch.cat([dec2, conv1], 1))
+        return self.final(dec1)
 
 
-# dataset = NormalDataset()
-dataset = LaidDataset()
+def unet11(pretrained=False, **kwargs):
+    model = UNet11(pretrained=pretrained, **kwargs)
+    return model
 
-i = 0
-for i, pair in enumerate(dataset):
-    i += 1
-    x, y = pair
-    x.save(f'./{i}_x.png')
-    y.save(f'./{i}_y.png')
-    if i > 5:
-        break
+
