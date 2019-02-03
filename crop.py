@@ -4,16 +4,20 @@ import gc
 from PIL import Image, ImageFilter
 Image.MAX_IMAGE_PIXELS = 1000000000
 
-if len(sys.argv) < 3:
+if len(sys.argv) < 4:
     print('Invalid arguments.')
     exit(1)
 
-DIR_NAME = sys.argv[1]
-SRC_PATH = sys.argv[2]
-print(f'{DIR_NAME} {SRC_PATH}')
-TILE_SIZE = 112
+OUTPUT_DIR = 'train'
 
-DST_DIR = f'./outputs/{DIR_NAME}'
+DIR_NAME = sys.argv[1]
+TILE_SIZE= int(sys.argv[2])
+SRC_PATH = sys.argv[3]
+if TILE_SIZE < 1:
+    print(f'Invalid arguments TILE_SIZE: {TILE_SIZE}.')
+    exit(1)
+
+DST_DIR = f'./{OUTPUT_DIR}/{DIR_NAME}'
 os.makedirs(DST_DIR, exist_ok=True)
 
 img = Image.open(SRC_PATH)
