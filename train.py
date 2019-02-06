@@ -44,19 +44,21 @@ data_set = LaidDataset(
         transform_y = transform_y)
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 model = UNet11(num_classes=NUM_CLASSES, pretrained=True)
+if device == 'cuda':
+    model = model.cuda()
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 criterion = nn.BCELoss()
 
 for epoch in range(2):  # loop over the dataset multiple times
     total_loss = 0.0
     for i, (inputs, labels) in enumerate(data_loader):
-        inputs, labels = Variable(inputs), Variable(labels)
-        print(inputs.type())
-        print(labels.type())
+        inputs = inputs.to(device)
+        labels = labels.to(device)
         optimizer.zero_grad()
-        outputs = model(inputs)
+        outputs = model(inputs).to(device)
         loss = criterion(outputs, labels)
         print(loss)
         loss.backward()
