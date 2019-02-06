@@ -1,3 +1,5 @@
+import sys
+import os
 import numpy as np
 import torch
 from torch.autograd import Variable
@@ -12,10 +14,22 @@ from net import UNet11
 from data import LaidDataset
 
 
-BATCH_SIZE = 2
-NUM_WORKERS = 1
+BATCH_SIZE = 24
+NUM_WORKERS = 4
 NUM_CLASSES = 3
+EPOCH_COUNT = 2000
+LOG_INTERVAL = 10
+SAVE_INTERVAL = 100
 
+first_epoch = 1
+weight_file = None
+if len(sys.argv) > 1:
+    weight_file = sys.argv[1]
+    num = os.path.splitext(os.path.basename(weight_file))[0]
+    if not num.isdigit():
+        print(f'Invalid pt file')
+        exit(1)
+    first_epoch = int(num) + 1
 
 I = np.identity(NUM_CLASSES, dtype=np.float32)
 
@@ -47,26 +61,35 @@ data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_work
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 model = UNet11(num_classes=NUM_CLASSES, pretrained=True)
+if weight_file:
+    model.load_state_dict(torch.load(weight_file))
 if device == 'cuda':
     model = model.cuda()
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 criterion = nn.BCELoss()
 
-for epoch in range(2):  # loop over the dataset multiple times
-    total_loss = 0.0
+
+epoch = first_epoch
+print(f'start from {epoch} epoch')
+while epoch <= EPOCH_COUNT:
+    running_loss = 0.0
     for i, (inputs, labels) in enumerate(data_loader):
         inputs = inputs.to(device)
         labels = labels.to(device)
         optimizer.zero_grad()
         outputs = model(inputs).to(device)
         loss = criterion(outputs, labels)
-        print(loss)
         loss.backward()
         optimizer.step()
-        loss += loss.data[0]
-        total_loss += loss.data[0]
-        if i % 2000 == 1999:
-            print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, total_loss / 2000))
-            total_loss = 0.0
+        running_loss += loss.data[0]
 
-print('Finished Training')
+    if (epoch % LOG_INTERVAL) == 0:
+        print(f'epoch {epoch}: running_loss={running_loss}')
+
+    if (epoch % SAVE_INTERVAL) == 0:
+        path = f'./weights/{epoch}.pt'
+        torch.save(model.state_dict(), path)
+        print(f'save weights to {path}')
+    epoch += 1
+
+print('Finished')

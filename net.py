@@ -81,4 +81,4 @@ class UNet11(nn.Module):
             x_out = F.log_softmax(self.final(dec1), dim=1)
         else:
             x_out = self.final(dec1)
-        return F.sigmoid(x_out)
+        return torch.sigmoid(x_out)
