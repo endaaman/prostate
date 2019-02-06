@@ -22,12 +22,12 @@ $ python crop.py '224/18_2500/x' 224 inputs/18_2500/1_0_tile.jpg
 ### export env
 
 ```
-$ conda env export | grep -v "^prefix: " > env.yml
+$ conda env export | grep -v "^prefix: " > ./env.yml
 ```
 
 ### load env
 
 ```
-$ conda env create -f environment.yml
+$ conda env create --name prostate --file ./env.yml
 ```
 

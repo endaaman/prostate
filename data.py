@@ -1,18 +1,20 @@
 import os
 import numpy as np
 from PIL import Image, ImageOps, ImageDraw, ImageFont
-
+from torchvision.transforms import ToTensor, Normalize, Compose
 from torch.utils.data import Dataset, DataLoader
 
 
 def load_images(base_dir):
     case_names = os.listdir(base_dir)
+    case_names.sort()
     yy = []
     xx = []
     names = []
     for case_name in case_names:
         case_dir = f'{base_dir}/{case_name}'
         file_names = os.listdir(f'{case_dir}/y/')
+        file_names.sort()
         i = 0
         count = 0
         for file_name in file_names:
@@ -42,26 +44,30 @@ class NormalDataset(Dataset):
         img = img.rotate(90 * (op % 4))
         return img
 
-    def __init__(self):
+    def __init__(self, transform_x=None, transform_y=None):
         self.xx, self.yy, self.names = load_images('./train/224')
-        self.image_count = len(self.yy)
-        print(f'count: {self.image_count}')
+        self.transform_x = transform_x
+        self.transform_y = transform_y
 
     def __len__(self):
-        return self.image_count * 8
+        return len(self.yy) * 8
 
     def __getitem__(self, idx):
         i = np.random.randint(0, len(self.yy))
         op = idx // self.image_count
         x_image = self.augment_image(self.xx[i], op)
         y_image = self.augment_image(self.yy[i], op)
+        if self.transform_x:
+            x_image = self.transform_x(x_image)
+        if self.transform_y:
+            y_image = self.transform_y(y_image)
         return (x_image, y_image)
 
 
 class LaidDataset(Dataset):
-    def combine_images(self, images, operations):
+    def combine_images(self, images, mode, operations):
         size = images[0].size[0]
-        image = Image.new('RGBA', (size * 2, size * 2), (255, 255, 255))
+        image = Image.new(mode, (size * 2, size * 2), (255, 255, 255))
         for i, img in enumerate(images):
             op = operations[i]
             if op > 3:
@@ -71,10 +77,13 @@ class LaidDataset(Dataset):
             image.paste(img, pos)
         return image
 
-    def __init__(self):
+    def __init__(self, transform_x=None, transform_y=None):
         self.xx, self.yy, self.names = load_images('./train/112')
+        self.transform_x = transform_x
+        self.transform_y = transform_y
 
     def __len__(self):
+        # return int(1e10)
         return len(self.yy)
 
     def __getitem__(self, idx):
@@ -83,19 +92,10 @@ class LaidDataset(Dataset):
         y_images = [self.yy[i] for i in ii]
         # names = [self.names[i] for i in ii]
         operations = np.random.choice(list(range(8)), 4)
-        x_image = self.combine_images(x_images, operations)
-        y_image = self.combine_images(y_images, operations)
+        x_image = self.combine_images(x_images, 'RGB', operations)
+        y_image = self.combine_images(y_images, 'RGBA', operations)
+        if self.transform_x:
+            x_image = self.transform_x(x_image)
+        if self.transform_y:
+            y_image = self.transform_y(y_image)
         return (x_image, y_image)
-
-
-# dataset = NormalDataset()
-dataset = LaidDataset()
-
-i = 0
-for i, pair in enumerate(dataset):
-    i += 1
-    x, y = pair
-    x.save(f'./tmp/{i}_x.png')
-    y.save(f'./tmp/{i}_y.png')
-    if i > 5:
-        break
