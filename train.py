@@ -31,6 +31,7 @@ if len(sys.argv) > 1:
         exit(1)
     first_epoch = int(num) + 1
 
+
 I = np.identity(NUM_CLASSES, dtype=np.float32)
 
 def one_hot(x):
@@ -48,8 +49,6 @@ def transform_y(img):
     arr2 = np.apply_along_axis(one_hot, 2, arr)
     return ToTensor()(arr2)
 
-
-
 data_set = LaidDataset(
         transform_x = Compose([
             ToTensor(),
@@ -58,16 +57,21 @@ data_set = LaidDataset(
         transform_y = transform_y)
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
+
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 
 model = UNet11(num_classes=NUM_CLASSES, pretrained=True)
 if weight_file:
     model.load_state_dict(torch.load(weight_file))
+model = model.to(device)
 if device == 'cuda':
-    model = model.cuda()
+    net = torch.nn.DataParallel(net)
+    torch.backends.cudnn.benchmark = True
+
+
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 criterion = nn.BCELoss()
-
 
 epoch = first_epoch
 print(f'start from {epoch} epoch')
