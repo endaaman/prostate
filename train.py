@@ -17,7 +17,6 @@ BATCH_SIZE = 32
 NUM_WORKERS = 4
 NUM_CLASSES = 3
 EPOCH_COUNT = 2000
-LOG_INTERVAL = 10
 SAVE_INTERVAL = 100
 
 first_epoch = 1
@@ -48,7 +47,7 @@ def transform_y(img):
     arr2 = np.apply_along_axis(one_hot, 2, arr)
     return ToTensor()(arr2)
 
-data_set = LaidDataset(
+data_set = RandomPatchDataset(
         transform_x = Compose([
             ToTensor(),
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -84,7 +83,6 @@ while epoch <= EPOCH_COUNT:
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
-        print(f'loss={loss}')
 
     print(f'epoch {epoch}: running_loss={running_loss}')
 

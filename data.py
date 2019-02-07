@@ -34,12 +34,16 @@ def load_images(base_dir):
             # x_img_array = np.asarray(x_img)[:,:,:3]
             xx.append(x_img)
             names.append(base_name)
-    # yy = np.array(yy)
-    # xx = np.array(xx)
     return xx, yy, names
 
 
 class BaseDataset(Dataset):
+    def flip_and_rotate(self, img, op):
+        if op > 3:
+            img = ImageOps.mirror(img)
+        img = img.rotate(90 * (op % 4))
+        return img
+
     def __init__(self, transform_x=None, transform_y=None):
         self.transform_x = transform_x
         self.transform_y = transform_y
@@ -53,12 +57,6 @@ class BaseDataset(Dataset):
 
 
 class NormalDataset(BaseDataset):
-    def augment_image(self, img, op):
-        if op > 3:
-            img = ImageOps.mirror(img)
-        img = img.rotate(90 * (op % 4))
-        return img
-
     def __init__(self, *args, **kwargs):
         super(NormalDataset, self).__init__(*args, **kwargs)
         self.xx, self.yy, self.names = load_images('./train/224')
@@ -69,8 +67,8 @@ class NormalDataset(BaseDataset):
     def __getitem__(self, idx):
         i = np.random.randint(0, len(self.yy))
         op = idx // self.image_count
-        x_image = self.augment_image(self.xx[i], op)
-        y_image = self.augment_image(self.yy[i], op)
+        x_image = self.flip_and_rotate(self.xx[i], op)
+        y_image = self.flip_and_rotate(self.yy[i], op)
         return self.transform(x_image, y_image)
 
 
@@ -113,28 +111,35 @@ class RandomPatchDataset(BaseDataset):
         base_dir = './train/full'
         file_names = os.listdir(f'{base_dir}/y')
         self.names = []
-        self.x_images = []
-        self.y_images = []
+        self.x_raws = []
+        self.y_raws = []
         for file_name in file_names:
             base_name, ext_name = os.path.splitext(file_name)
-            self.x_images.append(Image.open(f'{base_dir}/x/{base_name}.jpg'))
-            self.y_images.append(Image.open(f'{base_dir}/y/{base_name}.png'))
+            x_raw = Image.open(f'{base_dir}/x/{base_name}.jpg')
+            y_raw = Image.open(f'{base_dir}/y/{base_name}.png')
+            x_raw.load()
+            y_raw.load()
+            self.x_raws.append(x_raw)
+            self.y_raws.append(y_raw)
             self.names.append(base_name)
 
     def __len__(self):
         return 10000 // 224
 
     def __getitem__(self, _idx):
-        i = np.random.randint(len(self.y_images))
+        i = np.random.randint(len(self.y_raws))
+        y_raw = self.y_raws[i]
+        x_raw = self.x_raws[i]
         use_patch = False
         while not use_patch:
-            y_image = self.y_images[i]
-            x_image = self.x_images[i]
-            image_w, image_h = y_image.size
+            image_w, image_h = y_raw.size
             left = np.random.randint(image_w - TILE_SIZE)
             top = np.random.randint(image_h - TILE_SIZE)
-            y_patch = y_image.crop((left, top, left + TILE_SIZE, top + TILE_SIZE))
-            y_arr = np.asarray(y_patch)
+            y_image = y_raw.crop((left, top, left + TILE_SIZE, top + TILE_SIZE))
+            y_arr = np.asarray(y_image)
             use_patch = np.any(y_arr != 0)
-        x_patch = x_image.crop((left, top, left + TILE_SIZE, top + TILE_SIZE))
-        return self.transform(x_patch, y_patch)
+        x_image = x_raw.crop((left, top, left + TILE_SIZE, top + TILE_SIZE))
+        op = np.random.randint(8)
+        x_image = self.flip_and_rotate(x_image, op)
+        y_image = self.flip_and_rotate(y_image, op)
+        return self.transform(x_image, y_image)

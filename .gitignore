@@ -1,5 +1,6 @@
 train/
 inputs/
 tmp/
+out/
 weights/
 tmp.py
