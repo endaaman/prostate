@@ -14,7 +14,7 @@ from net import UNet11
 from data import LaidDataset
 
 
-BATCH_SIZE = 24
+BATCH_SIZE = 32
 NUM_WORKERS = 4
 NUM_CLASSES = 3
 EPOCH_COUNT = 2000
@@ -65,16 +65,15 @@ model = UNet11(num_classes=NUM_CLASSES, pretrained=True)
 if weight_file:
     model.load_state_dict(torch.load(weight_file))
 model = model.to(device)
-if device == 'cuda':
-    net = torch.nn.DataParallel(net)
-    torch.backends.cudnn.benchmark = True
+# if device == 'cuda':
+#     model = torch.nn.DataParallel(model)
+#     torch.backends.cudnn.benchmark = True
 
 
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 criterion = nn.BCELoss()
 
 epoch = first_epoch
-print(f'start from {epoch} epoch')
 while epoch <= EPOCH_COUNT:
     running_loss = 0.0
     for i, (inputs, labels) in enumerate(data_loader):
@@ -85,10 +84,10 @@ while epoch <= EPOCH_COUNT:
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
-        running_loss += loss.data[0]
+        running_loss += loss.item()
+        print(f'loss={loss}')
 
-    if (epoch % LOG_INTERVAL) == 0:
-        print(f'epoch {epoch}: running_loss={running_loss}')
+    print(f'epoch {epoch}: running_loss={running_loss}')
 
     if (epoch % SAVE_INTERVAL) == 0:
         path = f'./weights/{epoch}.pt'
