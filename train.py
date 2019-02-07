@@ -10,7 +10,7 @@ from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
 
 from net import UNet11
-from data import LaidDataset
+from data import LaidDataset, RandomPatchDataset
 
 
 BATCH_SIZE = 32

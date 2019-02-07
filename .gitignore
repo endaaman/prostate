@@ -2,3 +2,4 @@ train/
 inputs/
 tmp/
 weights/
+tmp.py

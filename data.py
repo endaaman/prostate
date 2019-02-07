@@ -3,6 +3,8 @@ import numpy as np
 from PIL import Image, ImageOps, ImageDraw, ImageFont
 from torchvision.transforms import ToTensor, Normalize, Compose
 from torch.utils.data import Dataset, DataLoader
+Image.MAX_IMAGE_PIXELS = 1000000000
+TILE_SIZE = 224
 
 
 def load_images(base_dir):
@@ -37,17 +39,29 @@ def load_images(base_dir):
     return xx, yy, names
 
 
-class NormalDataset(Dataset):
+class BaseDataset(Dataset):
+    def __init__(self, transform_x=None, transform_y=None):
+        self.transform_x = transform_x
+        self.transform_y = transform_y
+
+    def transform(self, x, y):
+        if self.transform_x:
+            x = self.transform_x(x)
+        if self.transform_y:
+            y = self.transform_y(y)
+        return x, y
+
+
+class NormalDataset(BaseDataset):
     def augment_image(self, img, op):
         if op > 3:
             img = ImageOps.mirror(img)
         img = img.rotate(90 * (op % 4))
         return img
 
-    def __init__(self, transform_x=None, transform_y=None):
+    def __init__(self, *args, **kwargs):
+        super(NormalDataset, self).__init__(*args, **kwargs)
         self.xx, self.yy, self.names = load_images('./train/224')
-        self.transform_x = transform_x
-        self.transform_y = transform_y
 
     def __len__(self):
         return len(self.yy) * 8
@@ -57,14 +71,10 @@ class NormalDataset(Dataset):
         op = idx // self.image_count
         x_image = self.augment_image(self.xx[i], op)
         y_image = self.augment_image(self.yy[i], op)
-        if self.transform_x:
-            x_image = self.transform_x(x_image)
-        if self.transform_y:
-            y_image = self.transform_y(y_image)
-        return (x_image, y_image)
+        return self.transform(x_image, y_image)
 
 
-class LaidDataset(Dataset):
+class LaidDataset(BaseDataset):
     def combine_images(self, images, mode, operations):
         size = images[0].size[0]
         image = Image.new(mode, (size * 2, size * 2), (255, 255, 255))
@@ -77,10 +87,10 @@ class LaidDataset(Dataset):
             image.paste(img, pos)
         return image
 
-    def __init__(self, transform_x=None, transform_y=None):
+    def __init__(self, *args, **kwargs):
+        super(LaidDataset, self).__init__(*args, **kwargs)
         self.xx, self.yy, self.names = load_images('./train/112')
-        self.transform_x = transform_x
-        self.transform_y = transform_y
+
 
     def __len__(self):
         # return int(1e10)
@@ -94,8 +104,37 @@ class LaidDataset(Dataset):
         operations = np.random.choice(list(range(8)), 4)
         x_image = self.combine_images(x_images, 'RGB', operations)
         y_image = self.combine_images(y_images, 'RGBA', operations)
-        if self.transform_x:
-            x_image = self.transform_x(x_image)
-        if self.transform_y:
-            y_image = self.transform_y(y_image)
-        return (x_image, y_image)
+        return self.transform(x_image, y_image)
+
+
+class RandomPatchDataset(BaseDataset):
+    def __init__(self, *args, **kwargs):
+        super(RandomPatchDataset, self).__init__(*args, **kwargs)
+        base_dir = './train/full'
+        file_names = os.listdir(f'{base_dir}/y')
+        self.names = []
+        self.x_images = []
+        self.y_images = []
+        for file_name in file_names:
+            base_name, ext_name = os.path.splitext(file_name)
+            self.x_images.append(Image.open(f'{base_dir}/x/{base_name}.jpg'))
+            self.y_images.append(Image.open(f'{base_dir}/y/{base_name}.png'))
+            self.names.append(base_name)
+
+    def __len__(self):
+        return 10000 // 224
+
+    def __getitem__(self, _idx):
+        i = np.random.randint(len(self.y_images))
+        use_patch = False
+        while not use_patch:
+            y_image = self.y_images[i]
+            x_image = self.x_images[i]
+            image_w, image_h = y_image.size
+            left = np.random.randint(image_w - TILE_SIZE)
+            top = np.random.randint(image_h - TILE_SIZE)
+            y_patch = y_image.crop((left, top, left + TILE_SIZE, top + TILE_SIZE))
+            y_arr = np.asarray(y_patch)
+            use_patch = np.any(y_arr != 0)
+        x_patch = x_image.crop((left, top, left + TILE_SIZE, top + TILE_SIZE))
+        return self.transform(x_patch, y_patch)
