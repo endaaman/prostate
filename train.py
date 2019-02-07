@@ -13,10 +13,10 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 from net import UNet11
 from data import LaidDataset, RandomPatchDataset
 
-BATCH_SIZE = 32
+BATCH_SIZE = 24
 NUM_WORKERS = 4
 NUM_CLASSES = 3
-EPOCH_COUNT = 200
+EPOCH_COUNT = 100
 
 first_epoch = 1
 weight_file = None
@@ -65,9 +65,9 @@ model = UNet11(num_classes=NUM_CLASSES)
 if weight_file:
     model.load_state_dict(torch.load(weight_file))
 model = model.to(device)
-if device == 'cuda':
-    model = torch.nn.DataParallel(model)
-    torch.backends.cudnn.benchmark = True
+# if device == 'cuda':
+#     model = torch.nn.DataParallel(model)
+#     torch.backends.cudnn.benchmark = True
 
 
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -101,9 +101,9 @@ while epoch <= EPOCH_COUNT:
     torch.save(model.cpu().state_dict(), weight_path)
     print(f'save weights to {weight_path}')
     model = model.to(device)
-    if old_weight_path and os.path.exists(old_weight_path):
-        os.remove(old_weight_path)
-        print(f'remove {old_weight_path}')
+    # if old_weight_path and os.path.exists(old_weight_path):
+    #     os.remove(old_weight_path)
+    #     print(f'remove {old_weight_path}')
     epoch += 1
 
 print(f'Finished training')
