@@ -124,7 +124,7 @@ class RandomPatchDataset(BaseDataset):
             self.names.append(base_name)
 
     def __len__(self):
-        return 10000 // 224
+        return (10000 // 224) * (10000 // 224) * 8
 
     def __getitem__(self, _idx):
         i = np.random.randint(len(self.y_raws))
