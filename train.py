@@ -16,7 +16,7 @@ from data import LaidDataset, RandomPatchDataset
 BATCH_SIZE = 32
 NUM_WORKERS = 4
 NUM_CLASSES = 3
-EPOCH_COUNT = 100
+EPOCH_COUNT = 200
 
 first_epoch = 1
 weight_file = None
@@ -96,12 +96,14 @@ while epoch <= EPOCH_COUNT:
     print('')
     print(f'epoch[{epoch}]: Done ({now_str()})')
 
-    if weight_path and os.path.exists(weight_path):
-      os.remove(weight_path)
+    old_weight_path = weight_path
     weight_path = f'./weights/{epoch}.pt'
     torch.save(model.cpu().state_dict(), weight_path)
     print(f'save weights to {weight_path}')
     model = model.to(device)
+    if old_weight_path and os.path.exists(old_weight_path):
+        os.remove(old_weight_path)
+        print(f'remove {old_weight_path}')
     epoch += 1
 
 print(f'Finished training')
