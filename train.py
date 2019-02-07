@@ -2,7 +2,6 @@ import sys
 import os
 import numpy as np
 import torch
-from torch.autograd import Variable
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -61,7 +60,7 @@ data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_work
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
-model = UNet11(num_classes=NUM_CLASSES, pretrained=True)
+model = UNet11(num_classes=NUM_CLASSES)
 if weight_file:
     model.load_state_dict(torch.load(weight_file))
 model = model.to(device)

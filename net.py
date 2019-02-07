@@ -34,12 +34,12 @@ class DecoderBlock(nn.Module):
 
 
 class UNet11(nn.Module):
-    def __init__(self, num_classes, num_filters=32, pretrained=False):
+    def __init__(self, num_classes, num_filters=32):
         super().__init__()
         self.num_classes = num_classes
         self.pool = nn.MaxPool2d(2, 2)
 
-        self.encoder = models.vgg11(pretrained=pretrained).features
+        self.encoder = models.vgg11(pretrained=True).features
 
         self.relu = self.encoder[1]
         self.conv1 = self.encoder[0]
