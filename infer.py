@@ -20,7 +20,7 @@ def load_image_with_paddig(path):
     top = (new_h - h) // 2
     bg = Image.new('RGB', (new_w, new_h), (255, 255, 255))
     bg.paste(img, (left, top))
-    return bg
+    return bg, (left, top, left + w, top + h)
 
 def from_one_hot(x):
     i = np.argmax(x)
@@ -31,12 +31,12 @@ def from_one_hot(x):
     return (0, 0, 0, 0)
 
 
-def restore_mask(arr):
-    arr2 = np.apply_along_axis(from_one_hot, 2, arr.transpose())
-    print(arr2.shape)
-    img = Image.fromarray(np.uint8(arr2))
-    return img
-
+def restore_mask(tensor, dims=None):
+    arr = np.apply_along_axis(from_one_hot, 2, tensor.permute(2, 1, 0).numpy())
+    img = Image.fromarray(np.uint8(arr))
+    if dims:
+        img = img.crop(dims)
+    return ImageOps.mirror(img.rotate(-90))
 
 
 if len(sys.argv) < 3:
@@ -45,7 +45,8 @@ if len(sys.argv) < 3:
 
 weight_file = sys.argv[1]
 input_file = sys.argv[2]
-
+base_name, _ = os.path.splitext(os.path.basename(input_file))
+output_file = f'./out/{base_name}.png'
 
 GPU = True
 device = 'cuda' if GPU and torch.cuda.is_available() else 'cpu'
@@ -56,17 +57,18 @@ model.load_state_dict(torch.load(weight_file))
 model = model.to(device)
 
 
-input_img = load_image_with_paddig(input_file)
+input_img, original_dims = load_image_with_paddig(input_file)
 transform_img = Compose([
     ToTensor(),
     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
 
+print(f'Start inference')
 with torch.no_grad():
     input_img = torch.unsqueeze(transform_img(input_img).to(device), dim=0)
     mask = model(input_img)
 
-mask_arr = mask.data[0].cpu().numpy()
-mask_img = restore_mask(mask_arr)
-mask_img.save('./out.png')
+mask_img = restore_mask(mask.data[0].cpu(), original_dims)
+mask_img.save(output_file)
+print(f'Done. saved to {output_file}')
