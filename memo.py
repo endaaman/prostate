@@ -4,23 +4,31 @@ import os
 import datetime
 import numpy as np
 from PIL import Image, ImageOps, ImageDraw, ImageFont
+import torch
 from torch.utils.data import DataLoader
 from data import LaidDataset, RandomPatchDataset
 from torchvision.transforms import ToTensor, Normalize, Compose
 Image.MAX_IMAGE_PIXELS = 1000000000
 
 
-dt_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-print(dt)
-exit(0)
+tensor = torch.load('./mask.pt')
 
-ds = RandomPatchDataset(transform_x = ToTensor(), transform_y = ToTensor())
-loader = DataLoader(ds, batch_size=32, shuffle=True, num_workers=4)
-for i, (x, y) in enumerate(loader):
-    pass
-    # print(i)
-    # y.save(f'./tmp/{i}.png')
-    # x.save(f'./tmp/{i}.jpg')
-    # if i > 10:
-    #     exit(0)
-print(i)
+
+COLOR_MAP = np.array([
+    [   0,   0,   0,   0], # 0 -> transparent
+    [   0,   0,   0, 255], # 1 -> black
+    [   0,   0, 255, 255], # 2 -> blue
+])
+
+def restore_mask(tensor, dims=None):
+    arr = np.transpose(tensor.numpy(), (1, 2, 0))
+    arr = np.argmax(arr, axis=2)
+    h, w = arr.shape
+    arr = COLOR_MAP[arr]
+    if dims:
+        arr = arr[dims[1]:dims[3],dims[0]:dims[2]]
+    print(arr.shape)
+    return Image.fromarray(np.uint8(arr))
+
+i = restore_mask(tensor, [100,0,110,200])
+i.save('p.png')

@@ -39,7 +39,7 @@ class UNet11(nn.Module):
         self.num_classes = num_classes
         self.pool = nn.MaxPool2d(2, 2)
 
-        self.encoder = models.vgg11(pretrained=True).features
+        self.encoder = models.vgg11(pretrained=True, batch_norm=True).features
 
         self.relu = self.encoder[1]
         self.conv1 = self.encoder[0]

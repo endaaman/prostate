@@ -22,21 +22,20 @@ def load_image_with_paddig(path):
     bg.paste(img, (left, top))
     return bg, (left, top, left + w, top + h)
 
-def from_one_hot(x):
-    i = np.argmax(x)
-    if i == 1:
-        return (0, 0, 0, 255)
-    if i == 2:
-        return (0, 0, 255, 255)
-    return (0, 0, 0, 0)
-
+COLOR_MAP = np.array([
+    [   0,   0,   0,   0], # 0 -> transparent
+    [   0,   0,   0, 255], # 1 -> black
+    [   0,   0, 255, 255], # 2 -> blue
+])
 
 def restore_mask(tensor, dims=None):
-    arr = np.apply_along_axis(from_one_hot, 2, tensor.permute(2, 1, 0).numpy())
-    img = Image.fromarray(np.uint8(arr))
+    arr = np.transpose(tensor.numpy(), (1, 2, 0))
+    arr = np.argmax(arr, axis=2)
+    h, w = arr.shape
+    arr = COLOR_MAP[arr]
     if dims:
-        img = img.crop(dims)
-    return ImageOps.mirror(img.rotate(-90))
+        arr = arr[dims[1]:dims[3],dims[0]:dims[2]]
+    return Image.fromarray(np.uint8(arr))
 
 
 if len(sys.argv) < 3:
@@ -69,6 +68,7 @@ with torch.no_grad():
     input_img = torch.unsqueeze(transform_img(input_img).to(device), dim=0)
     mask = model(input_img)
 
-mask_img = restore_mask(mask.data[0].cpu(), original_dims)
+tensor = mask.data[0].cpu()
+mask_img = restore_mask(tensor, original_dims)
 mask_img.save(output_file)
 print(f'Done. saved to {output_file}')

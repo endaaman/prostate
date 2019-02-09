@@ -26,14 +26,14 @@ for file_name in file_names:
     image.paste(i, (w * x, h * y))
     print(f'paste {file_name}')
 
-def blue_to_black(x):
-    if x[3] == 0:
-        return (0, 0, 0, 0)
-    if x[0] == 0 and x[1] == 0 and x[2] == 255:
-        return (0, 0, 0, 255)
-    return x
+# def blue_to_black(x):
+#     if x[3] == 0:
+#         return (0, 0, 0, 0)
+#     if x[0] == 0 and x[1] == 0 and x[2] == 255:
+#         return (0, 0, 0, 255)
+#     return x
+# arr = np.asarray(image)
+# arr = np.apply_along_axis(blue_to_black, 2, arr)
+# image = Image.fromarray(arr)
 
-
-arr = np.asarray(image)
-arr = np.apply_along_axis(blue_to_black, 2, arr)
-Image.fromarray(arr).save('out.png')
+image.save('out.png')

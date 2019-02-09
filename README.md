@@ -3,6 +3,7 @@
 - calc acc by dice coef or jaccard
 - fix RGB channel changing
 - fix flip/rotate result of inference
+- use ndarray in dataset module
 
 ## data augmentation
 
