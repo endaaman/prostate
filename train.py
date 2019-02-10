@@ -1,6 +1,5 @@
 import sys
 import os
-import datetime
 import numpy as np
 import torch
 import torch.nn as nn
@@ -12,11 +11,14 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 
 from net import UNet11
 from data import LaidDataset, RandomPatchDataset
+from utils import now_str
 
-BATCH_SIZE = 24
+
+BATCH_SIZE = 32
 NUM_WORKERS = 4
-NUM_CLASSES = 3
 EPOCH_COUNT = 100
+MULTI_GPU = False
+REMOVE_OLD_WEIGHT = False
 
 first_epoch = 1
 weight_file = None
@@ -29,29 +31,30 @@ if len(sys.argv) > 1:
     first_epoch = int(num) + 1
 
 
+INDEX_MAP = np.array([
+    0, # empty
+    1, # 000: black
+    1, # R00: red
+    1, # 0G0: green
+    1, # RG0: yellow
+    2, # 00B: blue
+    1, # R0B: purple
+    1, # 0GB: cyan
+    1, # RGB: white
+])
+NUM_CLASSES = len(np.unique(INDEX_MAP))
 I = np.identity(NUM_CLASSES, dtype=np.float32)
-
-def now_str():
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-def one_hot(x):
-    if x[3] == 0:
-         # transparent -> no label
-        return I[0]
-    if x[0] == 0 and x[1] == 0 and x[2] == 255:
-        # Blue -> Gleason 3
-        return I[2]
-    # Other -> Gleason 1
-    return I[1]
-
-def transform_y(img):
-    arr = np.asarray(img)
-    arr2 = np.apply_along_axis(one_hot, 2, arr)
-    return ToTensor()(arr2)
+def transform_y(arr):
+    arr[arr > 0] = 1 # fill by 1
+    arr = np.sum(np.multiply(arr, (1,2,4,8)), axis=2) # to 4bit
+    arr = (arr - 7) # to 3bit + 1
+    arr[arr < 0] = 0 # fill overrun
+    return ToTensor()(I[INDEX_MAP[arr]])
 
 data_set = RandomPatchDataset(
         transform_x = Compose([
             ToTensor(),
+            lambda x: x[[2,1,0]],
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ]),
         transform_y = transform_y)
@@ -65,9 +68,9 @@ model = UNet11(num_classes=NUM_CLASSES)
 if weight_file:
     model.load_state_dict(torch.load(weight_file))
 model = model.to(device)
-# if device == 'cuda':
-#     model = torch.nn.DataParallel(model)
-#     torch.backends.cudnn.benchmark = True
+if MULTI_GPU and device == 'cuda':
+    model = torch.nn.DataParallel(model)
+    # torch.backends.cudnn.benchmark = True
 
 
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -76,7 +79,7 @@ criterion = nn.BCELoss()
 print(f'Start training ({now_str()})')
 epoch = first_epoch
 weight_path = None
-while epoch <= EPOCH_COUNT:
+while epoch < first_epoch + EPOCH_COUNT:
     train_loss = 0.0
     message = None
     for i, (inputs, labels) in enumerate(data_loader):
@@ -101,9 +104,9 @@ while epoch <= EPOCH_COUNT:
     torch.save(model.cpu().state_dict(), weight_path)
     print(f'save weights to {weight_path}')
     model = model.to(device)
-    # if old_weight_path and os.path.exists(old_weight_path):
-    #     os.remove(old_weight_path)
-    #     print(f'remove {old_weight_path}')
+    if REMOVE_OLD_WEIGHT and old_weight_path and os.path.exists(old_weight_path):
+        os.remove(old_weight_path)
+        print(f'remove {old_weight_path}')
     epoch += 1
 
 print(f'Finished training')

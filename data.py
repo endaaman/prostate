@@ -141,6 +141,6 @@ class RandomPatchDataset(BaseDataset):
             use_patch = np.any(y_arr != 0)
         x_arr = x_raw[top:top + TILE_SIZE, left:left + TILE_SIZE]
         op = np.random.randint(8)
-        x_arr = self.flip_and_rotate_array(x_arr, op)
-        y_arr = self.flip_and_rotate_array(y_arr, op)
+        x_arr = self.flip_and_rotate_array(x_arr, op).copy()
+        y_arr = self.flip_and_rotate_array(y_arr, op).copy()
         return self.transform(x_arr, y_arr)
