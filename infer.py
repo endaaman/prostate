@@ -26,16 +26,15 @@ COLOR_MAP = np.array([
     [   0,   0,   0,   0], # 0 -> transparent
     [   0,   0,   0, 255], # 1 -> black
     [   0,   0, 255, 255], # 2 -> blue
-])
+], dtype='uint8')
 
 def restore_mask(tensor, dims=None):
     arr = np.transpose(tensor.numpy(), (1, 2, 0))
-    arr = np.argmax(arr, axis=2)
-    h, w = arr.shape
-    arr = COLOR_MAP[arr]
     if dims:
-        arr = arr[dims[1]:dims[3],dims[0]:dims[2]]
-    return Image.fromarray(np.uint8(arr))
+        arr = arr[dims[1]:dims[3], dims[0]:dims[2]]
+    arr = np.argmax(arr, axis=2)
+    arr = COLOR_MAP[arr]
+    return Image.fromarray(arr)
 
 
 if len(sys.argv) < 3:
@@ -59,16 +58,16 @@ model = model.to(device)
 input_img, original_dims = load_image_with_paddig(input_file)
 transform_img = Compose([
     ToTensor(),
+    lambda x: x[[2,1,0]],
     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
 
 print(f'Start inference')
+input_tensor = torch.unsqueeze(transform_img(input_img).to(device), dim=0)
 with torch.no_grad():
-    input_img = torch.unsqueeze(transform_img(input_img).to(device), dim=0)
-    mask = model(input_img)
+    output_tensor = model(input_tensor)
 
-tensor = mask.data[0].cpu()
-mask_img = restore_mask(tensor, original_dims)
+mask_img = restore_mask(output_tensor.data[0].cpu(), original_dims)
 mask_img.save(output_file)
 print(f'Done. saved to {output_file}')
