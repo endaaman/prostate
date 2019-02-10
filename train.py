@@ -9,15 +9,15 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
 
-from net import UNet11
+from net import UNet11, UNet16
 from data import LaidDataset, RandomPatchDataset
 from utils import now_str
 
 
 BATCH_SIZE = 32
 NUM_WORKERS = 4
-EPOCH_COUNT = 100
-MULTI_GPU = False
+EPOCH_COUNT = 200
+MULTI_GPU = True
 REMOVE_OLD_WEIGHT = False
 
 first_epoch = 1
@@ -64,14 +64,13 @@ data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_work
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
-model = UNet11(num_classes=NUM_CLASSES)
-if weight_file:
-    model.load_state_dict(torch.load(weight_file))
+model = UNet16(num_classes=NUM_CLASSES)
 model = model.to(device)
 if MULTI_GPU and device == 'cuda':
     model = torch.nn.DataParallel(model)
     # torch.backends.cudnn.benchmark = True
-
+if weight_file:
+    model.load_state_dict(torch.load(weight_file))
 
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 criterion = nn.BCELoss()
@@ -79,7 +78,7 @@ criterion = nn.BCELoss()
 print(f'Start training ({now_str()})')
 epoch = first_epoch
 weight_path = None
-while epoch < first_epoch + EPOCH_COUNT:
+while epoch <= EPOCH_COUNT:
     train_loss = 0.0
     message = None
     for i, (inputs, labels) in enumerate(data_loader):
