@@ -1,6 +1,7 @@
 # todo
 
 - calc acc by dice coef or jaccard
+- use batch_ normalization
 
 ## data augmentation
 
