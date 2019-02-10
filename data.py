@@ -38,11 +38,16 @@ def load_images(base_dir):
 
 
 class BaseDataset(Dataset):
-    def flip_and_rotate(self, img, op):
+    def flip_and_rotate_image(self, img, op):
         if op > 3:
             img = ImageOps.mirror(img)
         img = img.rotate(90 * (op % 4))
         return img
+
+    def flip_and_rotate_array(self, arr, op):
+        if op > 3:
+            arr = np.flip(arr, axis=0)
+        return np.rot90(arr, op % 4)
 
     def __init__(self, transform_x=None, transform_y=None):
         self.transform_x = transform_x
@@ -67,8 +72,8 @@ class NormalDataset(BaseDataset):
     def __getitem__(self, idx):
         i = np.random.randint(0, len(self.yy))
         op = idx // self.image_count
-        x_image = self.flip_and_rotate(self.xx[i], op)
-        y_image = self.flip_and_rotate(self.yy[i], op)
+        x_image = self.flip_and_rotate_image(self.xx[i], op)
+        y_image = self.flip_and_rotate_image(self.yy[i], op)
         return self.transform(x_image, y_image)
 
 
@@ -88,7 +93,6 @@ class LaidDataset(BaseDataset):
     def __init__(self, *args, **kwargs):
         super(LaidDataset, self).__init__(*args, **kwargs)
         self.xx, self.yy, self.names = load_images('./train/112')
-
 
     def __len__(self):
         # return int(1e10)
@@ -117,10 +121,8 @@ class RandomPatchDataset(BaseDataset):
             base_name, ext_name = os.path.splitext(file_name)
             x_raw = Image.open(f'{base_dir}/x/{base_name}.jpg')
             y_raw = Image.open(f'{base_dir}/y/{base_name}.png')
-            x_raw.load()
-            y_raw.load()
-            self.x_raws.append(x_raw)
-            self.y_raws.append(y_raw)
+            self.x_raws.append(np.asarray(x_raw))
+            self.y_raws.append(np.asarray(y_raw))
             self.names.append(base_name)
 
     def __len__(self):
@@ -132,14 +134,13 @@ class RandomPatchDataset(BaseDataset):
         x_raw = self.x_raws[i]
         use_patch = False
         while not use_patch:
-            image_w, image_h = y_raw.size
+            image_h, image_w, _ = y_raw.shape
             left = np.random.randint(image_w - TILE_SIZE)
             top = np.random.randint(image_h - TILE_SIZE)
-            y_image = y_raw.crop((left, top, left + TILE_SIZE, top + TILE_SIZE))
-            y_arr = np.asarray(y_image)
+            y_arr = y_raw[top:top + TILE_SIZE, left:left + TILE_SIZE]
             use_patch = np.any(y_arr != 0)
-        x_image = x_raw.crop((left, top, left + TILE_SIZE, top + TILE_SIZE))
+        x_arr = x_raw[top:top + TILE_SIZE, left:left + TILE_SIZE]
         op = np.random.randint(8)
-        x_image = self.flip_and_rotate(x_image, op)
-        y_image = self.flip_and_rotate(y_image, op)
-        return self.transform(x_image, y_image)
+        x_arr = self.flip_and_rotate_array(x_arr, op)
+        y_arr = self.flip_and_rotate_array(y_arr, op)
+        return self.transform(x_arr, y_arr)
