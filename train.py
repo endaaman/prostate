@@ -45,9 +45,9 @@ INDEX_MAP = np.array([
 NUM_CLASSES = len(np.unique(INDEX_MAP))
 I = np.identity(NUM_CLASSES, dtype=np.float32)
 def transform_y(arr):
-    arr[arr > 0] = 1 # fill by 1
-    arr = np.sum(np.multiply(arr, (1,2,4,8)), axis=2) # to 4bit
-    arr = (arr - 7) # to 3bit + 1
+    arr[arr > 0] = 1 # to bit 1 each color
+    arr = np.sum(np.multiply(arr, (1,2,4,8)), axis=2) # to 4bit each pixel
+    arr = arr - 7 # to 3bit + 1
     arr[arr < 0] = 0 # fill overrun
     return ToTensor()(I[INDEX_MAP[arr]])
 

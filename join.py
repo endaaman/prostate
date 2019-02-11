@@ -16,10 +16,11 @@ file_names.sort()
 
 image = Image.new('RGBA', (10000, 10000), (0, 0, 0, 0))
 
-w = 2500
-h = 2500
+w = 2000
+h = 2000
+base_name = '2_1_tile'
 for file_name in file_names:
-    m = re.match('^2_1_tile_(\d)_(\d)\.png$', file_name)
+    m = re.match(f'^{base_name}_(\d)_(\d)\.png$', file_name)
     x = int(m[1])
     y = int(m[2])
     i = Image.open(f'{INPTUT_DIR}/{file_name}')

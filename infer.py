@@ -7,9 +7,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.transforms import ToTensor, Normalize, Compose
+from net import UNet11, UNet16
 Image.MAX_IMAGE_PIXELS = 1000000000
 
-from net import UNet11
+
+MULTI_GPU = True
+NET = UNet16
 
 def load_image_with_paddig(path):
     img = Image.open(path)
@@ -50,9 +53,11 @@ GPU = True
 device = 'cuda' if GPU and torch.cuda.is_available() else 'cpu'
 
 
-model = UNet11(num_classes = 3)
-model.load_state_dict(torch.load(weight_file))
+model = NET(num_classes=3)
 model = model.to(device)
+if MULTI_GPU and device == 'cuda':
+    model = torch.nn.DataParallel(model)
+model.load_state_dict(torch.load(weight_file))
 
 
 input_img, original_dims = load_image_with_paddig(input_file)
