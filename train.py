@@ -59,10 +59,7 @@ data_set = RandomPatchDataset(
         transform_y = transform_y)
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
-
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-if not MULTI_GPU and device == 'cuda':
-    torch.cuda.set_device(1)
 
 model = NET(num_classes=NUM_CLASSES)
 model = model.to(device)
@@ -81,8 +78,7 @@ epoch = first_epoch
 weight_path = None
 while epoch <= EPOCH_COUNT:
     message = None
-    accs = 0
-    num_ittr = 0
+    accs = []
     for i, (inputs, labels) in enumerate(data_loader):
         inputs = inputs.to(device)
         labels = labels.to(device)
@@ -90,8 +86,7 @@ while epoch <= EPOCH_COUNT:
         outputs = model(inputs).to(device)
         loss = criterion(outputs, labels)
         acc = dice_coef(outputs, labels)
-        accs += acc
-        num_ittr += 1
+        accs.append(acc.item())
         loss.backward()
         optimizer.step()
         if message:
@@ -99,10 +94,8 @@ while epoch <= EPOCH_COUNT:
         message = f'epoch[{epoch}]: {i} / {len(data_set) // BATCH_SIZE} acc: {acc} loss: {loss} ({now_str()})'
         sys.stdout.write(message)
         sys.stdout.flush()
-        if i % 20 == 19:
-            torch.cuda.empty_cache()
     print('')
-    print(f'epoch[{epoch}]: Done. average acc:{accs/num_ittr} ({now_str()})')
+    print(f'epoch[{epoch}]: Done. average acc:{np.average(accs)} ({now_str()})')
 
     old_weight_path = weight_path
     weight_path = f'./weights/{epoch}.pt'
