@@ -61,15 +61,14 @@ data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_work
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+if not MULTI_GPU and device == 'cuda':
+    torch.cuda.set_device(1)
 
 model = NET(num_classes=NUM_CLASSES)
 model = model.to(device)
-if device == 'cuda':
-    if MULTI_GPU:
-        model = torch.nn.DataParallel(model)
-        torch.backends.cudnn.benchmark = True
-    else:
-        torch.cuda.set_device(1)
+if MULTI_GPU and device == 'cuda':
+    model = torch.nn.DataParallel(model)
+    # torch.backends.cudnn.benchmark = True
 
 if weight_file:
     model.load_state_dict(torch.load(weight_file))
@@ -82,7 +81,8 @@ epoch = first_epoch
 weight_path = None
 while epoch <= EPOCH_COUNT:
     message = None
-    accs = []
+    accs = 0
+    num_ittr = 0
     for i, (inputs, labels) in enumerate(data_loader):
         inputs = inputs.to(device)
         labels = labels.to(device)
@@ -90,7 +90,8 @@ while epoch <= EPOCH_COUNT:
         outputs = model(inputs).to(device)
         loss = criterion(outputs, labels)
         acc = dice_coef(outputs, labels)
-        accs.append(acc)
+        accs += acc
+        num_ittr += 1
         loss.backward()
         optimizer.step()
         if message:
@@ -101,7 +102,7 @@ while epoch <= EPOCH_COUNT:
         if i % 20 == 19:
             torch.cuda.empty_cache()
     print('')
-    print(f'epoch[{epoch}]: Done. average acc:{np.average(accs)} ({now_str()})')
+    print(f'epoch[{epoch}]: Done. average acc:{accs/num_ittr} ({now_str()})')
 
     old_weight_path = weight_path
     weight_path = f'./weights/{epoch}.pt'
