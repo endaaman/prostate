@@ -8,10 +8,9 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
-
 from net import UNet11, UNet16
 from data import LaidDataset, RandomPatchDataset
-from utils import now_str
+from utils import now_str, dice_coef
 
 
 BATCH_SIZE = 32
@@ -19,6 +18,7 @@ NUM_WORKERS = 4
 EPOCH_COUNT = 200
 MULTI_GPU = True
 REMOVE_OLD_WEIGHT = False
+NET = UNet11
 
 first_epoch = 1
 weight_file = None
@@ -45,7 +45,7 @@ INDEX_MAP = np.array([
 NUM_CLASSES = len(np.unique(INDEX_MAP))
 I = np.identity(NUM_CLASSES, dtype=np.float32)
 def transform_y(arr):
-    arr[arr > 0] = 1 # to bit 1 each color
+    arr[arr > 0] = 1 # to 1bit each color
     arr = np.sum(np.multiply(arr, (1,2,4,8)), axis=2) # to 4bit each pixel
     arr = arr - 7 # to 3bit + 1
     arr[arr < 0] = 0 # fill overrun
@@ -62,12 +62,15 @@ data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_work
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-
-model = UNet16(num_classes=NUM_CLASSES)
+model = NET(num_classes=NUM_CLASSES)
 model = model.to(device)
-if MULTI_GPU and device == 'cuda':
-    model = torch.nn.DataParallel(model)
-    # torch.backends.cudnn.benchmark = True
+if device == 'cuda':
+    if MULTI_GPU:
+        model = torch.nn.DataParallel(model)
+        torch.backends.cudnn.benchmark = True
+    else:
+        torch.cuda.set_device(1)
+
 if weight_file:
     model.load_state_dict(torch.load(weight_file))
 
@@ -78,24 +81,27 @@ print(f'Start training ({now_str()})')
 epoch = first_epoch
 weight_path = None
 while epoch <= EPOCH_COUNT:
-    train_loss = 0.0
     message = None
+    accs = []
     for i, (inputs, labels) in enumerate(data_loader):
         inputs = inputs.to(device)
         labels = labels.to(device)
         optimizer.zero_grad()
         outputs = model(inputs).to(device)
         loss = criterion(outputs, labels)
+        acc = dice_coef(outputs, labels)
+        accs.append(acc)
         loss.backward()
         optimizer.step()
-        train_loss += loss.item()
         if message:
             sys.stdout.write('\r' * len(message))
-        message = f'epoch[{epoch}]: {i} / {len(data_set) // BATCH_SIZE} loss: {loss} ({now_str()})'
+        message = f'epoch[{epoch}]: {i} / {len(data_set) // BATCH_SIZE} acc: {acc} loss: {loss} ({now_str()})'
         sys.stdout.write(message)
         sys.stdout.flush()
+        if i % 20 == 19:
+            torch.cuda.empty_cache()
     print('')
-    print(f'epoch[{epoch}]: Done ({now_str()})')
+    print(f'epoch[{epoch}]: Done. average acc:{np.average(accs)} ({now_str()})')
 
     old_weight_path = weight_path
     weight_path = f'./weights/{epoch}.pt'

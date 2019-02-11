@@ -116,7 +116,7 @@ class UNet11(nn.Module):
 
 
 class UNet16(nn.Module):
-    def __init__(self, num_classes=1, num_filters=32, pretrained=True, is_deconv=False, batch_norm=False):
+    def __init__(self, num_classes, num_filters=32, pretrained=True, is_deconv=False, batch_norm=False):
         super().__init__()
         self.num_classes = num_classes
         self.pool = nn.MaxPool2d(2, 2)
