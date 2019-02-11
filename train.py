@@ -34,12 +34,12 @@ if len(sys.argv) > 1:
 INDEX_MAP = np.array([
     0, # empty
     1, # 000: black
-    1, # R00: red
+    2, # B00: blue
     1, # 0G0: green
-    1, # RG0: yellow
-    2, # 00B: blue
-    1, # R0B: purple
-    1, # 0GB: cyan
+    1, # BG0: cyan
+    1, # 00R: red
+    1, # B0R: purple
+    1, # 0GR: yellow
     1, # RGB: white
 ])
 NUM_CLASSES = len(np.unique(INDEX_MAP))
@@ -54,7 +54,6 @@ def transform_y(arr):
 data_set = RandomPatchDataset(
         transform_x = Compose([
             ToTensor(),
-            lambda x: x[[2,1,0]],
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ]),
         transform_y = transform_y)

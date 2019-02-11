@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import cv2
 from PIL import Image, ImageOps, ImageDraw, ImageFont
 from torchvision.transforms import ToTensor, Normalize, Compose
 from torch.utils.data import Dataset, DataLoader
@@ -119,10 +120,10 @@ class RandomPatchDataset(BaseDataset):
         self.y_raws = []
         for file_name in file_names:
             base_name, ext_name = os.path.splitext(file_name)
-            x_raw = Image.open(f'{base_dir}/x/{base_name}.jpg')
-            y_raw = Image.open(f'{base_dir}/y/{base_name}.png')
-            self.x_raws.append(np.asarray(x_raw))
-            self.y_raws.append(np.asarray(y_raw))
+            x_raw = cv2.imread(f'{base_dir}/x/{base_name}.jpg')
+            y_raw = cv2.imread(f'{base_dir}/y/{base_name}.png', cv2.IMREAD_UNCHANGED)
+            self.x_raws.append(x_raw)
+            self.y_raws.append(y_raw)
             self.names.append(base_name)
 
     def __len__(self):
