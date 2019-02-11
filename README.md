@@ -38,6 +38,12 @@ $ conda env export | grep -v "^prefix: " > ./env.yml
 ### load env
 
 ```
+$ conda install --file env.yml
+```
+
+### create env
+
+```
 $ conda env create --name prostate --file ./env.yml
 ```
 
