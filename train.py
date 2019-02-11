@@ -20,6 +20,8 @@ MULTI_GPU = True
 REMOVE_OLD_WEIGHT = False
 NET = UNet11
 
+print(f'Preparing BATCH: {BATCH_SIZE} EPOCH: {EPOCH_COUNT} MULTI_GPU: {MULTI_GPU} ({now_str()})')
+
 first_epoch = 1
 weight_file = None
 if len(sys.argv) > 1:
@@ -63,17 +65,16 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 model = NET(num_classes=NUM_CLASSES)
 model = model.to(device)
+if weight_file:
+    model.load_state_dict(torch.load(weight_file))
 if MULTI_GPU and device == 'cuda':
     model = torch.nn.DataParallel(model)
     # torch.backends.cudnn.benchmark = True
 
-if weight_file:
-    model.load_state_dict(torch.load(weight_file))
-
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 criterion = nn.BCELoss()
 
-print(f'Start training ({now_str()})')
+print(f'Starting ({now_str()})')
 epoch = first_epoch
 weight_path = None
 while epoch <= EPOCH_COUNT:
@@ -91,7 +92,7 @@ while epoch <= EPOCH_COUNT:
         optimizer.step()
         if message:
             sys.stdout.write('\r' * len(message))
-        message = f'epoch[{epoch}]: {i} / {len(data_set) // BATCH_SIZE} acc: {acc} loss: {loss} ({now_str()})'
+        message = f'epoch[{epoch}]: {i+1} / {len(data_set) // BATCH_SIZE} acc: {acc} loss: {loss} ({now_str()})'
         sys.stdout.write(message)
         sys.stdout.flush()
     print('')
@@ -99,7 +100,8 @@ while epoch <= EPOCH_COUNT:
 
     old_weight_path = weight_path
     weight_path = f'./weights/{epoch}.pt'
-    torch.save(model.cpu().state_dict(), weight_path)
+    state = model.module.cpu().state_dict() if MULTI_GPU else model.cpu().state_dict()
+    torch.save(state, weight_path)
     print(f'save weights to {weight_path}')
     model = model.to(device)
     if REMOVE_OLD_WEIGHT and old_weight_path and os.path.exists(old_weight_path):
