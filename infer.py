@@ -12,7 +12,8 @@ Image.MAX_IMAGE_PIXELS = 1000000000
 
 
 MULTI_GPU = True
-NET = UNet16
+NET = 'unet11'
+NUM_CLASSES = 3
 
 def load_image_with_paddig(path):
     img = Image.open(path)
@@ -49,15 +50,16 @@ input_file = sys.argv[2]
 base_name, _ = os.path.splitext(os.path.basename(input_file))
 output_file = f'./out/{base_name}.png'
 
-GPU = True
-device = 'cuda' if GPU and torch.cuda.is_available() else 'cpu'
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-
-model = NET(num_classes=3)
+if NET == 'unet11':
+    model = UNet11(num_classes=NUM_CLASSES)
+else:
+    model = UNet16(num_classes=NUM_CLASSES)
 model = model.to(device)
+model.load_state_dict(torch.load(weight_file))
 if MULTI_GPU and device == 'cuda':
     model = torch.nn.DataParallel(model)
-model.load_state_dict(torch.load(weight_file))
 
 
 input_img, original_dims = load_image_with_paddig(input_file)

@@ -15,12 +15,12 @@ from utils import now_str, dice_coef
 
 BATCH_SIZE = 32
 NUM_WORKERS = 4
-EPOCH_COUNT = 200
+EPOCH_COUNT = 500
 MULTI_GPU = True
 REMOVE_OLD_WEIGHT = False
-NET = UNet11
+NET = 'unet11'
 
-print(f'Preparing BATCH: {BATCH_SIZE} EPOCH: {EPOCH_COUNT} MULTI_GPU: {MULTI_GPU} ({now_str()})')
+print(f'Preparing NET: {NET} BATCH: {BATCH_SIZE} EPOCH: {EPOCH_COUNT} MULTI_GPU: {MULTI_GPU} ({now_str()})')
 
 first_epoch = 1
 weight_file = None
@@ -63,7 +63,10 @@ data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_work
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-model = NET(num_classes=NUM_CLASSES)
+if NET == 'unet11':
+    model = UNet11(num_classes=NUM_CLASSES)
+else:
+    model = UNet16(num_classes=NUM_CLASSES)
 model = model.to(device)
 if weight_file:
     model.load_state_dict(torch.load(weight_file))
