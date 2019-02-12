@@ -13,6 +13,8 @@ OUTPUT_DIR = sys.argv[2]
 X = int(sys.argv[3])
 Y = int(sys.argv[4])
 
+
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 base_name, _ = os.path.splitext(os.path.basename(INPTUT_PATH))
 
 img = Image.open(INPTUT_PATH)

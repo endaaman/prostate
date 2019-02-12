@@ -14,11 +14,12 @@ INPTUT_DIR = sys.argv[1]
 file_names = os.listdir(INPTUT_DIR)
 file_names.sort()
 
-image = Image.new('RGBA', (10000, 10000), (0, 0, 0, 0))
+SIZE = 10000
+image = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
 
-w = 2000
-h = 2000
-base_name = '2_1_tile'
+w = SIZE // 4
+h = SIZE // 4
+base_name = '2_0_tile'
 for file_name in file_names:
     m = re.match(f'^{base_name}_(\d)_(\d)\.png$', file_name)
     x = int(m[1])

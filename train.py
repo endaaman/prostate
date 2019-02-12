@@ -18,7 +18,7 @@ NUM_WORKERS = 4
 EPOCH_COUNT = 500
 MULTI_GPU = True
 REMOVE_OLD_WEIGHT = False
-NET = 'unet11'
+NET = 'unet16'
 
 print(f'Preparing NET: {NET} BATCH: {BATCH_SIZE} EPOCH: {EPOCH_COUNT} MULTI_GPU: {MULTI_GPU} ({now_str()})')
 
