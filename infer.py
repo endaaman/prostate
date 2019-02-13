@@ -12,7 +12,7 @@ Image.MAX_IMAGE_PIXELS = 1000000000
 
 
 MULTI_GPU = True
-NET = 'unet11'
+NET = 'unet16'
 NUM_CLASSES = 3
 
 def load_image_with_paddig(path):
@@ -52,6 +52,7 @@ output_file = f'./out/{base_name}.png'
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+model = None
 if NET == 'unet11':
     model = UNet11(num_classes=NUM_CLASSES)
 else:

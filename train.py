@@ -17,7 +17,6 @@ BATCH_SIZE = 32
 NUM_WORKERS = 4
 EPOCH_COUNT = 500
 MULTI_GPU = True
-REMOVE_OLD_WEIGHT = False
 NET = 'unet16'
 
 print(f'Preparing NET: {NET} BATCH: {BATCH_SIZE} EPOCH: {EPOCH_COUNT} MULTI_GPU: {MULTI_GPU} ({now_str()})')
@@ -63,6 +62,7 @@ data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_work
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+model = None
 if NET == 'unet11':
     model = UNet11(num_classes=NUM_CLASSES)
 else:
@@ -72,14 +72,14 @@ if weight_file:
     model.load_state_dict(torch.load(weight_file))
 if MULTI_GPU and device == 'cuda':
     model = torch.nn.DataParallel(model)
-    # torch.backends.cudnn.benchmark = True
 
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 criterion = nn.BCELoss()
 
 print(f'Starting ({now_str()})')
 epoch = first_epoch
-weight_path = None
+weight_dir = f'./weights/{NET}/'
+os.makedirs(weight_dir, exist_ok=True)
 while epoch <= EPOCH_COUNT:
     message = None
     accs = []
@@ -101,15 +101,11 @@ while epoch <= EPOCH_COUNT:
     print('')
     print(f'epoch[{epoch}]: Done. average acc:{np.average(accs)} ({now_str()})')
 
-    old_weight_path = weight_path
-    weight_path = f'./weights/{epoch}.pt'
+    weight_path = f'./{weight_dir}/{epoch}.pt'
     state = model.module.cpu().state_dict() if MULTI_GPU else model.cpu().state_dict()
     torch.save(state, weight_path)
     print(f'save weights to {weight_path}')
     model = model.to(device)
-    if REMOVE_OLD_WEIGHT and old_weight_path and os.path.exists(old_weight_path):
-        os.remove(old_weight_path)
-        print(f'remove {old_weight_path}')
     epoch += 1
 
 print(f'Finished training')
