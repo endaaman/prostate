@@ -75,7 +75,7 @@ class UNet11(nn.Module):
         self.pool = nn.MaxPool2d(2, 2)
         self.encoder = models.vgg11(pretrained=pretrained).features
 
-        self.relu = self.encoder[1]
+        self.relu = nn.ReLU(inplace=True)
         self.conv1 = self.encoder[0]
         self.conv2 = self.encoder[3]
         self.conv3s = self.encoder[6]
@@ -116,12 +116,11 @@ class UNet11(nn.Module):
 
 
 class UNet16(nn.Module):
-    def __init__(self, num_classes, num_filters=32, pretrained=True, is_deconv=False, batch_norm=False):
+    def __init__(self, num_classes, num_filters=32, pretrained=True, is_deconv=False):
         super().__init__()
         self.num_classes = num_classes
         self.pool = nn.MaxPool2d(2, 2)
-        vgg16 = models.vgg16_bn if batch_norm else models.vgg16
-        self.encoder = vgg16(pretrained=pretrained).features
+        self.encoder = models.vgg16(pretrained=pretrained).features
 
         self.relu = nn.ReLU(inplace=True)
         self.conv1 = nn.Sequential(self.encoder[0],
@@ -183,7 +182,7 @@ class UNet11bn(nn.Module):
         self.num_classes = num_classes
         self.pool = nn.MaxPool2d(2, 2)
         self.encoder = models.vgg11_bn(pretrained=pretrained).features
-        self.relu = self.encoder[2]
+        self.relu = nn.ReLU(inplace=True)
         self.conv1 = self.encoder[0]
         self.bn1 = self.encoder[1]
         self.conv2 = self.encoder[4]
@@ -218,6 +217,79 @@ class UNet11bn(nn.Module):
         conv4 = self.relu(self.bn4(self.conv4(conv4s)))
         conv5s = self.relu(self.bn5s(self.conv5s(self.pool(conv4))))
         conv5 = self.relu(self.bn5(self.conv5(conv5s)))
+        center = self.center(self.pool(conv5))
+        dec5 = self.dec5(torch.cat([center, conv5], 1))
+        dec4 = self.dec4(torch.cat([dec5, conv4], 1))
+        dec3 = self.dec3(torch.cat([dec4, conv3], 1))
+        dec2 = self.dec2(torch.cat([dec3, conv2], 1))
+        dec1 = self.dec1(torch.cat([dec2, conv1], 1))
+        if self.num_classes > 1:
+            x_out = F.log_softmax(self.final(dec1), dim=1)
+        else:
+            x_out = self.final(dec1)
+        return torch.sigmoid(x_out)
+
+
+class UNet16bn(nn.Module):
+    def __init__(self, num_classes, num_filters=32, pretrained=True, is_deconv=False):
+        super().__init__()
+        self.num_classes = num_classes
+        self.pool = nn.MaxPool2d(2, 2)
+        self.encoder = models.vgg16_bn(pretrained=pretrained).features
+        self.relu = nn.ReLU(inplace=True)
+        self.conv1 = nn.Sequential(self.encoder[0],
+                                   self.encoder[1],
+                                   self.relu,
+                                   self.encoder[3],
+                                   self.encoder[4],
+                                   self.relu)
+        self.conv2 = nn.Sequential(self.encoder[7],
+                                   self.encoder[8],
+                                   self.relu,
+                                   self.encoder[10],
+                                   self.encoder[11],
+                                   self.relu)
+        self.conv3 = nn.Sequential(self.encoder[14],
+                                   self.encoder[15],
+                                   self.relu,
+                                   self.encoder[17],
+                                   self.encoder[18],
+                                   self.relu,
+                                   self.encoder[20],
+                                   self.encoder[21],
+                                   self.relu)
+        self.conv4 = nn.Sequential(self.encoder[24],
+                                   self.encoder[25],
+                                   self.relu,
+                                   self.encoder[27],
+                                   self.encoder[28],
+                                   self.relu,
+                                   self.encoder[30],
+                                   self.encoder[31],
+                                   self.relu)
+        self.conv5 = nn.Sequential(self.encoder[34],
+                                   self.encoder[35],
+                                   self.relu,
+                                   self.encoder[37],
+                                   self.encoder[38],
+                                   self.relu,
+                                   self.encoder[40],
+                                   self.encoder[41],
+                                   self.relu)
+        self.center = DecoderBlockV2(512, num_filters * 8 * 2, num_filters * 8, is_deconv)
+        self.dec5 = DecoderBlockV2(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8, is_deconv)
+        self.dec4 = DecoderBlockV2(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8, is_deconv)
+        self.dec3 = DecoderBlockV2(256 + num_filters * 8, num_filters * 4 * 2, num_filters * 2, is_deconv)
+        self.dec2 = DecoderBlockV2(128 + num_filters * 2, num_filters * 2 * 2, num_filters, is_deconv)
+        self.dec1 = ConvRelu(64 + num_filters, num_filters)
+        self.final = nn.Conv2d(num_filters, num_classes, kernel_size=1)
+
+    def forward(self, x):
+        conv1 = self.conv1(x)
+        conv2 = self.conv2(self.pool(conv1))
+        conv3 = self.conv3(self.pool(conv2))
+        conv4 = self.conv4(self.pool(conv3))
+        conv5 = self.conv5(self.pool(conv4))
         center = self.center(self.pool(conv5))
         dec5 = self.dec5(torch.cat([center, conv5], 1))
         dec4 = self.dec4(torch.cat([dec5, conv4], 1))
