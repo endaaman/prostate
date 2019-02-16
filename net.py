@@ -183,22 +183,13 @@ class UNet11bn(nn.Module):
         self.pool = nn.MaxPool2d(2, 2)
         self.encoder = models.vgg11_bn(pretrained=pretrained).features
         self.relu = nn.ReLU(inplace=True)
-        self.conv1 = self.encoder[0]
-        self.bn1 = self.encoder[1]
-        self.conv2 = self.encoder[4]
-        self.bn2 = self.encoder[5]
-        self.conv3s = self.encoder[8]
-        self.bn3s = self.encoder[9]
-        self.conv3 = self.encoder[11]
-        self.bn3 = self.encoder[12]
-        self.conv4s = self.encoder[15]
-        self.bn4s = self.encoder[16]
-        self.conv4 = self.encoder[18]
-        self.bn4 = self.encoder[19]
-        self.conv5s = self.encoder[22]
-        self.bn5s = self.encoder[23]
-        self.conv5 = self.encoder[25]
-        self.bn5 = self.encoder[26]
+
+        self.conv1 = nn.Sequential(self.encoder[0], self.encoder[1], self.relu)
+        self.conv2 = nn.Sequential(self.encoder[4], self.encoder[5], self.relu)
+        self.conv3 = nn.Sequential(self.encoder[8], self.encoder[9], self.relu, self.encoder[11], self.encoder[12])
+        self.conv4 = nn.Sequential(self.encoder[15], self.encoder[16], self.relu, self.encoder[18], self.encoder[19])
+        self.conv5 = nn.Sequential(self.encoder[22], self.encoder[23], self.relu, self.encoder[25], self.encoder[26])
+
         self.center = DecoderBlock(num_filters * 8 * 2, num_filters * 8 * 2, num_filters * 8)
         self.dec5 = DecoderBlock(num_filters * (16 + 8), num_filters * 8 * 2, num_filters * 8)
         self.dec4 = DecoderBlock(num_filters * (16 + 8), num_filters * 8 * 2, num_filters * 4)
@@ -209,14 +200,11 @@ class UNet11bn(nn.Module):
         self.final = nn.Conv2d(num_filters, num_classes, kernel_size=1)
 
     def forward(self, x):
-        conv1 = self.relu(self.bn1(self.conv1(x)))
-        conv2 = self.relu(self.bn2(self.conv2(self.pool(conv1))))
-        conv3s = self.relu(self.bn3s(self.conv3s(self.pool(conv2))))
-        conv3 = self.relu(self.bn3(self.conv3(conv3s)))
-        conv4s = self.relu(self.bn4s(self.conv4s(self.pool(conv3))))
-        conv4 = self.relu(self.bn4(self.conv4(conv4s)))
-        conv5s = self.relu(self.bn5s(self.conv5s(self.pool(conv4))))
-        conv5 = self.relu(self.bn5(self.conv5(conv5s)))
+        conv1 = self.conv1(x)
+        conv2 = self.conv2(self.pool(conv1))
+        conv3 = self.conv3(self.pool(conv2))
+        conv4 = self.conv4(self.pool(conv3))
+        conv5 = self.conv5(self.pool(conv4))
         center = self.center(self.pool(conv5))
         dec5 = self.dec5(torch.cat([center, conv5], 1))
         dec4 = self.dec4(torch.cat([dec5, conv4], 1))
