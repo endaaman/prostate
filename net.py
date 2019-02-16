@@ -76,14 +76,11 @@ class UNet11(nn.Module):
         self.enc = models.vgg11(pretrained=pretrained).features
 
         self.relu = nn.ReLU(inplace=True)
-        self.conv1 = self.enc[0]
-        self.conv2 = self.enc[3]
-        self.conv3s = self.enc[6]
-        self.conv3 = self.enc[8]
-        self.conv4s = self.enc[11]
-        self.conv4 = self.enc[13]
-        self.conv5s = self.enc[16]
-        self.conv5 = self.enc[18]
+        self.conv1 = nn.Sequential(self.enc[0], self.relu)
+        self.conv2 = nn.Sequential(self.enc[3], self.relu)
+        self.conv3 = nn.Sequential(self.enc[6], self.relu, self.enc[8])
+        self.conv4 = nn.Sequential(self.enc[11], self.relu, self.enc[13])
+        self.conv5 = nn.Sequential(self.enc[16], self.relu, self.enc[18])
         self.center = DecoderBlock(num_filters * 8 * 2, num_filters * 8 * 2, num_filters * 8)
         self.dec5 = DecoderBlock(num_filters * (16 + 8), num_filters * 8 * 2, num_filters * 8)
         self.dec4 = DecoderBlock(num_filters * (16 + 8), num_filters * 8 * 2, num_filters * 4)
@@ -94,14 +91,11 @@ class UNet11(nn.Module):
         self.final = nn.Conv2d(num_filters, num_classes, kernel_size=1)
 
     def forward(self, x):
-        conv1 = self.relu(self.conv1(x))
-        conv2 = self.relu(self.conv2(self.pool(conv1)))
-        conv3s = self.relu(self.conv3s(self.pool(conv2)))
-        conv3 = self.relu(self.conv3(conv3s))
-        conv4s = self.relu(self.conv4s(self.pool(conv3)))
-        conv4 = self.relu(self.conv4(conv4s))
-        conv5s = self.relu(self.conv5s(self.pool(conv4)))
-        conv5 = self.relu(self.conv5(conv5s))
+        conv1 = self.conv1(x)
+        conv2 = self.conv2(self.pool(conv1))
+        conv3 = self.conv3(self.pool(conv2))
+        conv4 = self.conv4(self.pool(conv3))
+        conv5 = self.conv5(self.pool(conv4))
         center = self.center(self.pool(conv5))
         dec5 = self.dec5(torch.cat([center, conv5], 1))
         dec4 = self.dec4(torch.cat([dec5, conv4], 1))
@@ -123,32 +117,11 @@ class UNet16(nn.Module):
         self.enc = models.vgg16(pretrained=pretrained).features
 
         self.relu = nn.ReLU(inplace=True)
-        self.conv1 = nn.Sequential(self.enc[0],
-                                   self.relu,
-                                   self.enc[2],
-                                   self.relu)
-        self.conv2 = nn.Sequential(self.enc[5],
-                                   self.relu,
-                                   self.enc[7],
-                                   self.relu)
-        self.conv3 = nn.Sequential(self.enc[10],
-                                   self.relu,
-                                   self.enc[12],
-                                   self.relu,
-                                   self.enc[14],
-                                   self.relu)
-        self.conv4 = nn.Sequential(self.enc[17],
-                                   self.relu,
-                                   self.enc[19],
-                                   self.relu,
-                                   self.enc[21],
-                                   self.relu)
-        self.conv5 = nn.Sequential(self.enc[24],
-                                   self.relu,
-                                   self.enc[26],
-                                   self.relu,
-                                   self.enc[28],
-                                   self.relu)
+        self.conv1 = nn.Sequential(self.enc[0], self.relu, self.enc[2], self.relu)
+        self.conv2 = nn.Sequential(self.enc[5], self.relu, self.enc[7], self.relu)
+        self.conv3 = nn.Sequential(self.enc[10], self.relu, self.enc[12], self.relu, self.enc[14], self.relu)
+        self.conv4 = nn.Sequential(self.enc[17], self.relu, self.enc[19], self.relu, self.enc[21], self.relu)
+        self.conv5 = nn.Sequential(self.enc[24], self.relu, self.enc[26], self.relu, self.enc[28], self.relu)
         self.center = DecoderBlockV2(512, num_filters * 8 * 2, num_filters * 8, is_deconv)
         self.dec5 = DecoderBlockV2(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8, is_deconv)
         self.dec4 = DecoderBlockV2(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8, is_deconv)
