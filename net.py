@@ -73,17 +73,17 @@ class UNet11(nn.Module):
         super().__init__()
         self.num_classes = num_classes
         self.pool = nn.MaxPool2d(2, 2)
-        self.encoder = models.vgg11(pretrained=pretrained).features
+        self.enc = models.vgg11(pretrained=pretrained).features
 
         self.relu = nn.ReLU(inplace=True)
-        self.conv1 = self.encoder[0]
-        self.conv2 = self.encoder[3]
-        self.conv3s = self.encoder[6]
-        self.conv3 = self.encoder[8]
-        self.conv4s = self.encoder[11]
-        self.conv4 = self.encoder[13]
-        self.conv5s = self.encoder[16]
-        self.conv5 = self.encoder[18]
+        self.conv1 = self.enc[0]
+        self.conv2 = self.enc[3]
+        self.conv3s = self.enc[6]
+        self.conv3 = self.enc[8]
+        self.conv4s = self.enc[11]
+        self.conv4 = self.enc[13]
+        self.conv5s = self.enc[16]
+        self.conv5 = self.enc[18]
         self.center = DecoderBlock(num_filters * 8 * 2, num_filters * 8 * 2, num_filters * 8)
         self.dec5 = DecoderBlock(num_filters * (16 + 8), num_filters * 8 * 2, num_filters * 8)
         self.dec4 = DecoderBlock(num_filters * (16 + 8), num_filters * 8 * 2, num_filters * 4)
@@ -120,34 +120,34 @@ class UNet16(nn.Module):
         super().__init__()
         self.num_classes = num_classes
         self.pool = nn.MaxPool2d(2, 2)
-        self.encoder = models.vgg16(pretrained=pretrained).features
+        self.enc = models.vgg16(pretrained=pretrained).features
 
         self.relu = nn.ReLU(inplace=True)
-        self.conv1 = nn.Sequential(self.encoder[0],
+        self.conv1 = nn.Sequential(self.enc[0],
                                    self.relu,
-                                   self.encoder[2],
+                                   self.enc[2],
                                    self.relu)
-        self.conv2 = nn.Sequential(self.encoder[5],
+        self.conv2 = nn.Sequential(self.enc[5],
                                    self.relu,
-                                   self.encoder[7],
+                                   self.enc[7],
                                    self.relu)
-        self.conv3 = nn.Sequential(self.encoder[10],
+        self.conv3 = nn.Sequential(self.enc[10],
                                    self.relu,
-                                   self.encoder[12],
+                                   self.enc[12],
                                    self.relu,
-                                   self.encoder[14],
+                                   self.enc[14],
                                    self.relu)
-        self.conv4 = nn.Sequential(self.encoder[17],
+        self.conv4 = nn.Sequential(self.enc[17],
                                    self.relu,
-                                   self.encoder[19],
+                                   self.enc[19],
                                    self.relu,
-                                   self.encoder[21],
+                                   self.enc[21],
                                    self.relu)
-        self.conv5 = nn.Sequential(self.encoder[24],
+        self.conv5 = nn.Sequential(self.enc[24],
                                    self.relu,
-                                   self.encoder[26],
+                                   self.enc[26],
                                    self.relu,
-                                   self.encoder[28],
+                                   self.enc[28],
                                    self.relu)
         self.center = DecoderBlockV2(512, num_filters * 8 * 2, num_filters * 8, is_deconv)
         self.dec5 = DecoderBlockV2(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8, is_deconv)
@@ -181,14 +181,14 @@ class UNet11bn(nn.Module):
         super().__init__()
         self.num_classes = num_classes
         self.pool = nn.MaxPool2d(2, 2)
-        self.encoder = models.vgg11_bn(pretrained=pretrained).features
+        self.enc = models.vgg11_bn(pretrained=pretrained).features
         self.relu = nn.ReLU(inplace=True)
 
-        self.conv1 = nn.Sequential(self.encoder[0], self.encoder[1], self.relu)
-        self.conv2 = nn.Sequential(self.encoder[4], self.encoder[5], self.relu)
-        self.conv3 = nn.Sequential(self.encoder[8], self.encoder[9], self.relu, self.encoder[11], self.encoder[12])
-        self.conv4 = nn.Sequential(self.encoder[15], self.encoder[16], self.relu, self.encoder[18], self.encoder[19])
-        self.conv5 = nn.Sequential(self.encoder[22], self.encoder[23], self.relu, self.encoder[25], self.encoder[26])
+        self.conv1 = nn.Sequential(self.enc[0], self.enc[1], self.relu)
+        self.conv2 = nn.Sequential(self.enc[4], self.enc[5], self.relu)
+        self.conv3 = nn.Sequential(self.enc[8], self.enc[9], self.relu, self.enc[11], self.enc[12])
+        self.conv4 = nn.Sequential(self.enc[15], self.enc[16], self.relu, self.enc[18], self.enc[19])
+        self.conv5 = nn.Sequential(self.enc[22], self.enc[23], self.relu, self.enc[25], self.enc[26])
 
         self.center = DecoderBlock(num_filters * 8 * 2, num_filters * 8 * 2, num_filters * 8)
         self.dec5 = DecoderBlock(num_filters * (16 + 8), num_filters * 8 * 2, num_filters * 8)
@@ -223,46 +223,46 @@ class UNet16bn(nn.Module):
         super().__init__()
         self.num_classes = num_classes
         self.pool = nn.MaxPool2d(2, 2)
-        self.encoder = models.vgg16_bn(pretrained=pretrained).features
+        self.enc = models.vgg16_bn(pretrained=pretrained).features
         self.relu = nn.ReLU(inplace=True)
-        self.conv1 = nn.Sequential(self.encoder[0],
-                                   self.encoder[1],
+        self.conv1 = nn.Sequential(self.enc[0],
+                                   self.enc[1],
                                    self.relu,
-                                   self.encoder[3],
-                                   self.encoder[4],
+                                   self.enc[3],
+                                   self.enc[4],
                                    self.relu)
-        self.conv2 = nn.Sequential(self.encoder[7],
-                                   self.encoder[8],
+        self.conv2 = nn.Sequential(self.enc[7],
+                                   self.enc[8],
                                    self.relu,
-                                   self.encoder[10],
-                                   self.encoder[11],
+                                   self.enc[10],
+                                   self.enc[11],
                                    self.relu)
-        self.conv3 = nn.Sequential(self.encoder[14],
-                                   self.encoder[15],
+        self.conv3 = nn.Sequential(self.enc[14],
+                                   self.enc[15],
                                    self.relu,
-                                   self.encoder[17],
-                                   self.encoder[18],
+                                   self.enc[17],
+                                   self.enc[18],
                                    self.relu,
-                                   self.encoder[20],
-                                   self.encoder[21],
+                                   self.enc[20],
+                                   self.enc[21],
                                    self.relu)
-        self.conv4 = nn.Sequential(self.encoder[24],
-                                   self.encoder[25],
+        self.conv4 = nn.Sequential(self.enc[24],
+                                   self.enc[25],
                                    self.relu,
-                                   self.encoder[27],
-                                   self.encoder[28],
+                                   self.enc[27],
+                                   self.enc[28],
                                    self.relu,
-                                   self.encoder[30],
-                                   self.encoder[31],
+                                   self.enc[30],
+                                   self.enc[31],
                                    self.relu)
-        self.conv5 = nn.Sequential(self.encoder[34],
-                                   self.encoder[35],
+        self.conv5 = nn.Sequential(self.enc[34],
+                                   self.enc[35],
                                    self.relu,
-                                   self.encoder[37],
-                                   self.encoder[38],
+                                   self.enc[37],
+                                   self.enc[38],
                                    self.relu,
-                                   self.encoder[40],
-                                   self.encoder[41],
+                                   self.enc[40],
+                                   self.enc[41],
                                    self.relu)
         self.center = DecoderBlockV2(512, num_filters * 8 * 2, num_filters * 8, is_deconv)
         self.dec5 = DecoderBlockV2(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8, is_deconv)
