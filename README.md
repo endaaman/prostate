@@ -1,12 +1,3 @@
-# todo
-
-- calc acc by dice coef or jaccard
-- use batch_ normalization
-
-## data augmentation
-
-- universal rotating
-
 ## recipe
 
 ### crop
@@ -26,24 +17,24 @@ $ python train.py
 ### inference
 
 ```
-$ python infer.py ./weights/100.pt tmp/hoge.jpg
+$ python infer.py ./weights/100.pt ./tmp/hoge.jpg
 ```
 
 ### export env
 
 ```
-$ conda env export | grep -v "^prefix: " > ./env.yml
+$ conda env export | grep -v "^prefix: " > ./environment.yml
 ```
 
 ### load env
 
 ```
-$ conda install --file env.yml
+$ conda env update
 ```
 
 ### create env
 
 ```
-$ conda env create --name prostate --file ./env.yml
+$ conda env create --name prostate --file ./environment.yml
 ```
 
