@@ -18,6 +18,8 @@ NUM_WORKERS = 4
 EPOCH_COUNT = 500
 MULTI_GPU = True
 NET_NAME = 'unet11bn'
+
+print(f'Preparing NET: {NET_NAME} BATCH: {BATCH_SIZE} EPOCH: {EPOCH_COUNT} MULTI_GPU: {MULTI_GPU} ({now_str()})')
 NETs = {
     'unet11': UNet11,
     'unet16': UNet16,
@@ -25,8 +27,6 @@ NETs = {
     'unet16bn': UNet16bn,
 }
 NET = NETs[NET_NAME]
-
-print(f'Preparing NET: {NET_NAME} BATCH: {BATCH_SIZE} EPOCH: {EPOCH_COUNT} MULTI_GPU: {MULTI_GPU} ({now_str()})')
 
 first_epoch = 1
 weight_file = None

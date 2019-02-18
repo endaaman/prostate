@@ -2,34 +2,45 @@ import os
 import sys
 import math
 import numpy as np
-from PIL import Image, ImageOps, ImageDraw, ImageFont
+import cv2
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.transforms import ToTensor, Normalize, Compose
-from net import UNet11, UNet16
-Image.MAX_IMAGE_PIXELS = 1000000000
+from net import UNet11, UNet11bn, UNet16, UNet16bn
+from utils import now_str, dice_coef
 
 
 MULTI_GPU = True
-NET = 'unet16'
+NET_NAME = 'unet16'
 NUM_CLASSES = 3
 
+print(f'Preparing NET: {NET_NAME} MULTI_GPU: {MULTI_GPU} NUM_CLASSES: {NUM_CLASSES} ({now_str()})')
+
+NETs = {
+    'unet11': UNet11,
+    'unet16': UNet16,
+    'unet11bn': UNet11bn,
+    'unet16bn': UNet16bn,
+}
+NET = NETs[NET_NAME]
+
 def load_image_with_paddig(path):
-    img = Image.open(path)
-    w, h = img.size
+    img = cv2.imread(path)
+    h, w = img.shape[0:2]
     new_w = math.ceil(w / 32) * 32
     new_h = math.ceil(h / 32) * 32
     left = (new_w - w) // 2
+    right = (new_w - w) - left
     top = (new_h - h) // 2
-    bg = Image.new('RGB', (new_w, new_h), (255, 255, 255))
-    bg.paste(img, (left, top))
-    return bg, (left, top, left + w, top + h)
+    bottom = (new_h - h) - top
+    new_arr = np.pad(img, ((top, bottom), (left, right), (0,0,)), 'constant', constant_values=0)
+    return new_arr, (left, top, left + w, top + h)
 
 COLOR_MAP = np.array([
     [   0,   0,   0,   0], # 0 -> transparent
     [   0,   0,   0, 255], # 1 -> black
-    [   0,   0, 255, 255], # 2 -> blue
+    [ 255,   0,   0, 255], # 2 -> blue
 ], dtype='uint8')
 
 def restore_mask(tensor, dims=None):
@@ -38,7 +49,7 @@ def restore_mask(tensor, dims=None):
         arr = arr[dims[1]:dims[3], dims[0]:dims[2]]
     arr = np.argmax(arr, axis=2)
     arr = COLOR_MAP[arr]
-    return Image.fromarray(arr)
+    return arr
 
 
 if len(sys.argv) < 3:
@@ -77,5 +88,5 @@ with torch.no_grad():
     output_tensor = model(input_tensor)
 
 mask_img = restore_mask(output_tensor.data[0].cpu(), original_dims)
-mask_img.save(output_file)
+cv2.imwrite(mask_img, output_file)
 print(f'Done. saved to {output_file}')
