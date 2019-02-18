@@ -10,16 +10,16 @@ from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
 from net import UNet11, UNet11bn, UNet16, UNet16bn
 from data import LaidDataset, RandomPatchDataset
-from utils import now_str, dice_coef
+from utils import now_str, dice_coef, argmax_acc
 
 
-BATCH_SIZE = 32
+BATCH_SIZE = 48
 NUM_WORKERS = 4
-EPOCH_COUNT = 500
+EPOCH_COUNT = 300
 MULTI_GPU = True
 NET_NAME = 'unet11bn'
 
-print(f'Preparing NET: {NET_NAME} BATCH: {BATCH_SIZE} EPOCH: {EPOCH_COUNT} MULTI_GPU: {MULTI_GPU} ({now_str()})')
+print(f'Preparing NET: {NET_NAME} BATCH SIZE: {BATCH_SIZE} EPOCH: {EPOCH_COUNT} MULTI_GPU: {MULTI_GPU} ({now_str()})')
 NETs = {
     'unet11': UNet11,
     'unet16': UNet16,
@@ -82,10 +82,11 @@ criterion = nn.BCELoss()
 
 print(f'Starting ({now_str()})')
 epoch = first_epoch
-weight_dir = f'./weights/{NET_NAME}/'
+weight_dir = f'./weights/{NET_NAME}'
 os.makedirs(weight_dir, exist_ok=True)
 while epoch <= EPOCH_COUNT:
     message = None
+    dice_accs = []
     accs = []
     for i, (inputs, labels) in enumerate(data_loader):
         inputs = inputs.to(device)
@@ -93,17 +94,19 @@ while epoch <= EPOCH_COUNT:
         optimizer.zero_grad()
         outputs = model(inputs).to(device)
         loss = criterion(outputs, labels)
-        acc = dice_coef(outputs, labels)
-        accs.append(acc.item())
+        dice_acc = dice_coef(outputs, labels)
+        dice_accs.append(dice_acc)
+        acc = argmax_acc(outputs, labels)
+        accs.append(acc)
         loss.backward()
         optimizer.step()
         if message:
             sys.stdout.write('\r' * len(message))
-        message = f'epoch[{epoch}]: {i+1} / {len(data_set) // BATCH_SIZE} acc: {acc} loss: {loss} ({now_str()})'
+        message = f'epoch[{epoch}]: {i+1} / {len(data_set) // BATCH_SIZE} dice acc: {dice_acc:.5f} acc: {acc:.5f} loss: {loss:.5f} ({now_str()})'
         sys.stdout.write(message)
         sys.stdout.flush()
     print('')
-    print(f'epoch[{epoch}]: Done. average acc:{np.average(accs)} ({now_str()})')
+    print(f'epoch[{epoch}]: Done. dice acc:{np.average(dice_accs):.5f} acc:{np.average(accs):.5f} ({now_str()})')
 
     weight_path = f'./{weight_dir}/{epoch}.pt'
     state = model.module.cpu().state_dict() if MULTI_GPU else model.cpu().state_dict()
