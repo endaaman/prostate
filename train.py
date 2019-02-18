@@ -1,5 +1,6 @@
 import sys
 import os
+import argparse
 import numpy as np
 import torch
 import torch.nn as nn
@@ -12,32 +13,33 @@ from net import UNet11, UNet11bn, UNet16, UNet16bn
 from data import LaidDataset, RandomPatchDataset
 from utils import now_str, dice_coef, argmax_acc
 
+parser = argparse.ArgumentParser()
+parser.add_argument('weight', default=None, nargs='?')
+parser.add_argument('-b', '--batch-size', type=int, default=32)
+parser.add_argument('-e', '--epoch', type=int, default=300)
+parser.add_argument('-n', '--net', default='UNet11bn')
+parser.add_argument('--num-workers', type=int, default=4)
+parser.add_argument('--single-gpu', action="store_true")
+parser.add_argument('--cpu', action="store_true")
+args = parser.parse_args()
 
-BATCH_SIZE = 48
-NUM_WORKERS = 4
-EPOCH_COUNT = 300
-MULTI_GPU = True
-NET_NAME = 'unet11bn'
+STARTING_WEIGHT = args.weight
+BATCH_SIZE = args.batch_size
+NUM_WORKERS = args.num_workers
+EPOCH_COUNT = args.epoch
+USE_GPU = not args.cpu and torch.cuda.is_available()
+USE_MULTI_GPU = USE_GPU and not args.single_gpu
+NET_NAME = args.net
 
-print(f'Preparing NET: {NET_NAME} BATCH SIZE: {BATCH_SIZE} EPOCH: {EPOCH_COUNT} MULTI_GPU: {MULTI_GPU} ({now_str()})')
-NETs = {
-    'unet11': UNet11,
-    'unet16': UNet16,
-    'unet11bn': UNet11bn,
-    'unet16bn': UNet16bn,
-}
-NET = NETs[NET_NAME]
+print(f'Preparing NET:{NET_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} GPU:{USE_GPU} MULTI_GPU:{USE_MULTI_GPU} ({now_str()})')
 
 first_epoch = 1
-weight_file = None
 if len(sys.argv) > 1:
-    weight_file = sys.argv[1]
-    num = os.path.splitext(os.path.basename(weight_file))[0]
+    num = os.path.splitext(os.path.basename(STARTING_WEIGHT))[0]
     if not num.isdigit():
         print(f'Invalid pt file')
         exit(1)
     first_epoch = int(num) + 1
-
 
 INDEX_MAP = np.array([
     0, # empty
@@ -67,14 +69,18 @@ data_set = RandomPatchDataset(
         transform_y = transform_y)
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-model = None
+device = 'cuda' if USE_GPU else 'cpu'
+NET = {
+    'unet11': UNet11,
+    'unet16': UNet16,
+    'unet11bn': UNet11bn,
+    'unet16bn': UNet16bn,
+}[NET_NAME.lower()]
 model = NET(num_classes=NUM_CLASSES)
 model = model.to(device)
-if weight_file:
-    model.load_state_dict(torch.load(weight_file))
-if MULTI_GPU and device == 'cuda':
+if STARTING_WEIGHT:
+    model.load_state_dict(torch.load(STARTING_WEIGHT))
+if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
 
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -109,7 +115,7 @@ while epoch <= EPOCH_COUNT:
     print(f'epoch[{epoch}]: Done. dice acc:{np.average(dice_accs):.5f} acc:{np.average(accs):.5f} ({now_str()})')
 
     weight_path = f'./{weight_dir}/{epoch}.pt'
-    state = model.module.cpu().state_dict() if MULTI_GPU else model.cpu().state_dict()
+    state = model.module.cpu().state_dict() if USE_MULTI_GPU else model.cpu().state_dict()
     torch.save(state, weight_path)
     print(f'save weights to {weight_path}')
     model = model.to(device)
