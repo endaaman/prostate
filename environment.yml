@@ -1,12 +1,13 @@
 name: prostate
 channels:
   - pytorch
-  - conda-forge
   - anaconda
   - defaults
+  - conda-forge
 dependencies:
   - backcall=0.1.0=py37_0
   - blas=1.0=mkl
+  - bleach=3.1.0=py_0
   - bzip2=1.0.6=h14c3975_1002
   - ca-certificates=2019.1.23=0
   - cairo=1.14.12=h8948797_3
