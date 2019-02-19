@@ -34,7 +34,7 @@ NET_NAME = args.net
 print(f'Preparing NET:{NET_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} GPU:{USE_GPU} MULTI_GPU:{USE_MULTI_GPU} ({now_str()})')
 
 first_epoch = 1
-if len(sys.argv) > 1:
+if STARTING_WEIGHT:
     num = os.path.splitext(os.path.basename(STARTING_WEIGHT))[0]
     if not num.isdigit():
         print(f'Invalid pt file')
