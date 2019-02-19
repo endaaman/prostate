@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
 from net import UNet11, UNet11bn, UNet16, UNet16bn
-from data import LaidDataset, RandomPatchDataset
+from data import DefaultDataset
 from utils import now_str, dice_coef, argmax_acc
 
 parser = argparse.ArgumentParser()
@@ -61,7 +61,7 @@ def transform_y(arr):
     arr[arr < 0] = 0 # fill overrun
     return ToTensor()(I[INDEX_MAP[arr]])
 
-data_set = RandomPatchDataset(
+data_set = DefaultDataset(
         transform_x = Compose([
             ToTensor(),
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
