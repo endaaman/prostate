@@ -23,7 +23,6 @@ args = parser.parse_args()
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and not args.single_gpu
 NET_NAME = args.net
-NET_NAME = 'unet16'
 NUM_CLASSES = 3
 
 weight_path = args.weight
@@ -84,5 +83,5 @@ with torch.no_grad():
     output_tensor = model(input_tensor)
 
 mask_img = restore_mask(output_tensor.data[0].cpu(), original_dims)
-cv2.imwrite(mask_img, output_path)
+cv2.imwrite(output_path, mask_img)
 print(f'Done. saved to {output_path}')
