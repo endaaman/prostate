@@ -11,7 +11,7 @@ from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
 from net import UNet11, UNet11bn, UNet16, UNet16bn
 from data import DefaultDataset
-from utils import now_str, dice_coef, argmax_acc
+from utils import now_str, dice_coef, argmax_acc, curry
 
 parser = argparse.ArgumentParser()
 parser.add_argument('weight', default=None, nargs='?')
@@ -21,6 +21,7 @@ parser.add_argument('-n', '--net', default='UNet11bn')
 parser.add_argument('--num-workers', type=int, default=4)
 parser.add_argument('--single-gpu', action="store_true")
 parser.add_argument('--cpu', action="store_true")
+parser.add_argument('--vanilla', action="store_true")
 args = parser.parse_args()
 
 STARTING_WEIGHT = args.weight
@@ -30,6 +31,7 @@ EPOCH_COUNT = args.epoch
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and not args.single_gpu
 NET_NAME = args.net
+VANILLA = args.vanilla
 
 print(f'Preparing NET:{NET_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} GPU:{USE_GPU} MULTI_GPU:{USE_MULTI_GPU} ({now_str()})')
 
@@ -75,6 +77,10 @@ NET = {
     'unet16': UNet16,
     'unet11bn': UNet11bn,
     'unet16bn': UNet16bn,
+    'unet11v': curry(UNet11, pretrained=False),
+    'unet16v': curry(UNet16, pretrained=False),
+    'unet11vbn': curry(UNet11bn, pretrained=False),
+    'unet16vbn': curry(UNet16bn, pretrained=False),
 }[NET_NAME.lower()]
 model = NET(num_classes=NUM_CLASSES)
 model = model.to(device)

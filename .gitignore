@@ -3,4 +3,4 @@ inputs/
 tmp/
 out/
 weights/
-tmp.py
+tmp.*

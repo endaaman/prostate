@@ -9,13 +9,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.transforms import ToTensor, Normalize, Compose
 from net import UNet11, UNet11bn, UNet16, UNet16bn
-from utils import now_str, dice_coef
+from utils import now_str, dice_coef, overlay_transparent, to_heatmap
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('weight')
 parser.add_argument('input')
-parser.add_argument('-n', '--net', default='UNet11bn')
+parser.add_argument('-n', '--net')
 parser.add_argument('--single-gpu', action="store_true")
 parser.add_argument('--cpu', action="store_true")
 args = parser.parse_args()
@@ -27,12 +27,15 @@ NUM_CLASSES = 3
 
 weight_path = args.weight
 input_path = args.input
-output_path = './out/'  + os.path.splitext(os.path.basename(input_path))[0] + '.png'
+base_bane = os.path.splitext(os.path.basename(input_path))[0]
+output_dir = f'./out/{NET_NAME.lower()}/{base_bane}'
+os.makedirs(output_dir, exist_ok=True)
+output_img_path = f'{output_dir}/out.png'
+output_arr_path = f'{output_dir}/out.npy'
 
 print(f'Preparing NET:{NET_NAME} GPU:{USE_GPU} MULTI_GPU:{USE_MULTI_GPU} NUM_CLASSES:{NUM_CLASSES} ({now_str()})')
 
-def load_image_with_paddig(path):
-    img = cv2.imread(path)
+def add_padding(img):
     h, w = img.shape[0:2]
     new_w = math.ceil(w / 32) * 32
     new_h = math.ceil(h / 32) * 32
@@ -43,19 +46,22 @@ def load_image_with_paddig(path):
     new_arr = np.pad(img, ((top, bottom), (left, right), (0, 0)), 'constant', constant_values=0)
     return new_arr, (left, top, left + w, top + h)
 
-COLOR_MAP = np.array([
-    [   0,   0,   0,   0], # 0 -> transparent
-    [   0,   0,   0, 255], # 1 -> black
-    [ 255,   0,   0, 255], # 2 -> blue
-], dtype='uint8')
 
-def restore_mask(tensor, dims=None):
+def post_process(tensor, dims=None):
     arr = np.transpose(tensor.numpy(), (1, 2, 0))
     if dims:
         arr = arr[dims[1]:dims[3], dims[0]:dims[2]]
+    row_sums = np.sum(arr, axis=2)
+    return arr / row_sums[:, :, np.newaxis]
+
+def to_standard(arr):
+    COLOR_MAP = np.array([
+        [   0,   0,   0,   0], # 0 -> transparent
+        [   0,   0,   0, 255], # 1 -> black
+        [ 255,   0,   0, 255], # 2 -> blue
+    ], dtype='uint8')
     arr = np.argmax(arr, axis=2)
-    arr = COLOR_MAP[arr]
-    return arr
+    return COLOR_MAP[arr]
 
 device = 'cuda' if USE_GPU else 'cpu'
 
@@ -71,17 +77,30 @@ model.load_state_dict(torch.load(weight_path))
 if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
 
-input_img, original_dims = load_image_with_paddig(input_path)
-transform_img = Compose([
+
+input_img = cv2.imread(input_path)
+padded_input_img, original_dims = add_padding(input_img)
+pre_process = Compose([
     ToTensor(),
     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
 print(f'Start inference')
-input_tensor = torch.unsqueeze(transform_img(input_img).to(device), dim=0)
+input_tensor = torch.unsqueeze(pre_process(padded_input_img).to(device), dim=0)
 with torch.no_grad():
     output_tensor = model(input_tensor)
 
-mask_img = restore_mask(output_tensor.data[0].cpu(), original_dims)
-cv2.imwrite(output_path, mask_img)
-print(f'Done. saved to {output_path}')
+mask_arr = post_process(output_tensor.data[0].cpu(), original_dims)
+print(f'Finished inference.')
+
+cv2.imwrite(f'{output_dir}/org.jpg', input_img)
+mask_img = to_standard(mask_arr)
+cv2.imwrite(output_img_path, mask_img)
+np.save(output_arr_path, mask_arr)
+for i in range(NUM_CLASSES):
+    img = to_heatmap(mask_arr[:, :, i])
+    cv2.imwrite(f'{output_dir}/heat_{i}.png', img)
+    fused = overlay_transparent(input_img, img)
+    cv2.imwrite(f'{output_dir}/fused_{i}.png', fused)
+
+print(f'Save images.')
