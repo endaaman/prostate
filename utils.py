@@ -30,6 +30,7 @@ def curry(*args, **kwds):
 def to_heatmap(org, base_color=[0, 255, 0]):
     z = np.zeros([*org.shape], dtype=np.uint8)
     c255 = np.full([*org.shape], 255, dtype=np.uint8)
+    c200 = np.full([*org.shape], 200, dtype=np.uint8)
     vc = ((1 - org) * 170).astype(np.uint8)
     img = np.dstack((vc, c255, c255))
     img = cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
@@ -44,11 +45,11 @@ def overlay_transparent(background_img, img_to_overlay_t, x=0, y=0, overlay_size
     if overlay_size is not None:
         img_to_overlay_t = cv2.resize(img_to_overlay_t.copy(), overlay_size)
     b,g,r,a = cv2.split(img_to_overlay_t)
-    overlay_color = cv2.merge((b,g,r))
-    mask = cv2.medianBlur(a,5)
+    overlay_color = cv2.merge((b, g, r))
+    mask = cv2.medianBlur(a, 5)
     h, w, _ = overlay_color.shape
     roi = bg_img[y:y+h, x:x+w]
-    img1_bg = cv2.bitwise_and(roi.copy(),roi.copy(),mask = cv2.bitwise_not(mask))
-    img2_fg = cv2.bitwise_and(overlay_color,overlay_color,mask = mask)
+    img1_bg = cv2.bitwise_and(roi.copy(), roi.copy(), mask = cv2.bitwise_not(mask))
+    img2_fg = cv2.bitwise_and(overlay_color, overlay_color, mask = mask)
     bg_img[y:y+h, x:x+w] = cv2.add(img1_bg, img2_fg)
     return bg_img
