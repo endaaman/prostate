@@ -18,15 +18,16 @@ class ConvRelu(nn.Module):
 
 
 class DecoderBlock(nn.Module):
-    def __init__(self, in_channels, middle_channels, out_channels, bn=False):
+    def __init__(self, in_, mid, out, bn=False):
         super().__init__()
-        self.block = nn.Sequential(
-            ConvRelu(in_channels, middle_channels),
-            nn.ConvTranspose2d(middle_channels, out_channels, kernel_size=3, stride=2, padding=1, output_padding=1),
-        )
-        if bn:
-            self.append(nn.BatchNorm2d(out_channels))
-        self.append(nn.ReLU(inplace=True))
+        modules = [
+            ConvRelu(in_, mid),
+            nn.ConvTranspose2d(mid, out, kernel_size=3, stride=2, padding=1, output_padding=1),
+            nn.BatchNorm2d(out) if bn else None,
+            nn.ReLU(inplace=True),
+        ]
+        filter(None, modules)
+        self.block = nn.Sequential(*modules)
 
     def forward(self, x):
         return self.block(x)
