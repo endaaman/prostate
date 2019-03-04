@@ -23,12 +23,11 @@ class DecoderBlock(nn.Module):
         modules = [
             ConvRelu(in_, mid),
             nn.ConvTranspose2d(mid, out, kernel_size=3, stride=2, padding=1, output_padding=1),
-            nn.BatchNorm2d(out) if bn else None,
-            nn.ReLU(inplace=True),
         ]
-        filter(None, modules)
+        if bn:
+            modules.append(nn.BatchNorm2d(out))
+        modules.append(nn.ReLU(inplace=True))
         self.block = nn.Sequential(*modules)
-
     def forward(self, x):
         return self.block(x)
 
@@ -49,20 +48,23 @@ class Interpolate(nn.Module):
 
 
 class DecoderBlockV2(nn.Module):
-    def __init__(self, in_channels, middle_channels, out_channels, is_deconv=True):
+    def __init__(self, in_, mid, out, bn=False, is_deconv=True,):
         super(DecoderBlockV2, self).__init__()
-        self.in_channels = in_channels
+        self.in_ = in_
         if is_deconv:
-            self.block = nn.Sequential(
-                ConvRelu(in_channels, middle_channels),
-                nn.ConvTranspose2d(middle_channels, out_channels, kernel_size=4, stride=2, padding=1),
-                nn.ReLU(inplace=True)
-            )
+            modules = [
+                ConvRelu(in_, mid),
+                nn.ConvTranspose2d(mid, out, kernel_size=4, stride=2, padding=1),
+            ]
+            if bn:
+                modules.append(nn.BatchNorm2d(out))
+            modules.append(nn.ReLU(inplace=True))
+            self.block = nn.Sequential(*modules)
         else:
             self.block = nn.Sequential(
                 Interpolate(scale_factor=2, mode='bilinear'),
-                ConvRelu(in_channels, middle_channels),
-                ConvRelu(middle_channels, out_channels),
+                ConvRelu(in_, mid),
+                ConvRelu(mid, out),
             )
 
     def forward(self, x):

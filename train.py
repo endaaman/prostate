@@ -47,9 +47,9 @@ INDEX_MAP = np.array([
     0, # empty
     1, # 000: black
     2, # B00: blue
-    1, # 0G0: green
+    2, # 0G0: green
     1, # BG0: cyan
-    1, # 00R: red
+    2, # 00R: red
     1, # B0R: purple
     1, # 0GR: yellow
     1, # RGB: white
