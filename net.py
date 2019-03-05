@@ -176,7 +176,7 @@ class UNet11bn(nn.Module):
 
 
 class UNet16bn(nn.Module):
-    def __init__(self, num_classes, num_filters=32, pretrained=True, is_deconv=False):
+    def __init__(self, num_classes, num_filters=32, pretrained=True):
         super().__init__()
         self.num_classes = num_classes
         e = models.vgg16_bn(pretrained=pretrained).features
@@ -187,11 +187,11 @@ class UNet16bn(nn.Module):
         self.conv3 = nn.Sequential(e[14], e[15], self.relu, e[17], e[18], self.relu, e[20], e[21], self.relu)
         self.conv4 = nn.Sequential(e[24], e[25], self.relu, e[27], e[28], self.relu, e[30], e[31], self.relu)
         self.conv5 = nn.Sequential(e[34], e[35], self.relu, e[37], e[38], self.relu, e[40], e[41], self.relu)
-        self.center = DecoderBlock(512, num_filters * 8 * 2, num_filters * 8, is_deconv)
-        self.dec5 = DecoderBlock(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8, bn=True, is_deconv=is_deconv)
-        self.dec4 = DecoderBlock(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8, bn=True, is_deconv)
-        self.dec3 = DecoderBlock(256 + num_filters * 8, num_filters * 4 * 2, num_filters * 2, bn=True, is_deconv)
-        self.dec2 = DecoderBlock(128 + num_filters * 2, num_filters * 2 * 2, num_filters, bn=True, is_deconv)
+        self.center = DecoderBlock(512, num_filters * 8 * 2, num_filters * 8)
+        self.dec5 = DecoderBlock(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8, bn=True)
+        self.dec4 = DecoderBlock(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8, bn=True)
+        self.dec3 = DecoderBlock(256 + num_filters * 8, num_filters * 4 * 2, num_filters * 2, bn=True)
+        self.dec2 = DecoderBlock(128 + num_filters * 2, num_filters * 2 * 2, num_filters, bn=True)
         self.dec1 = ConvRelu(64 + num_filters, num_filters)
         self.final = nn.Conv2d(num_filters, num_classes, kernel_size=1)
 
