@@ -75,6 +75,7 @@ class UNet11(nn.Module):
     def __init__(self, num_classes, pretrained=True, num_filters=32):
         super().__init__()
         self.num_classes = num_classes
+        nf = num_filters
         e = models.vgg11(pretrained=pretrained).features
         self.pool = nn.MaxPool2d(2, 2)
         self.relu = nn.ReLU(inplace=True)
@@ -83,14 +84,14 @@ class UNet11(nn.Module):
         self.conv3 = nn.Sequential(e[6], self.relu, e[8])
         self.conv4 = nn.Sequential(e[11], self.relu, e[13])
         self.conv5 = nn.Sequential(e[16], self.relu, e[18])
-        self.center = DecoderBlock(num_filters * 8 * 2, num_filters * 8 * 2, num_filters * 8)
-        self.dec5 = DecoderBlock(num_filters * (16 + 8), num_filters * 8 * 2, num_filters * 8)
-        self.dec4 = DecoderBlock(num_filters * (16 + 8), num_filters * 8 * 2, num_filters * 4)
-        self.dec3 = DecoderBlock(num_filters * (8 + 4), num_filters * 4 * 2, num_filters * 2)
-        self.dec2 = DecoderBlock(num_filters * (4 + 2), num_filters * 2 * 2, num_filters)
-        self.dec1 = ConvRelu(num_filters * (2 + 1), num_filters)
+        self.center = DecoderBlock(nf * 8 * 2, nf * 8 * 2, nf * 8)
+        self.dec5 = DecoderBlock(nf * (16 + 8), nf * 8 * 2, nf * 8)
+        self.dec4 = DecoderBlock(nf * (16 + 8), nf * 8 * 2, nf * 4)
+        self.dec3 = DecoderBlock(nf * (8 + 4), nf * 4 * 2, nf * 2)
+        self.dec2 = DecoderBlock(nf * (4 + 2), nf * 2 * 2, nf)
+        self.dec1 = ConvRelu(nf * (2 + 1), nf)
 
-        self.final = nn.Conv2d(num_filters, num_classes, kernel_size=1)
+        self.final = nn.Conv2d(nf, num_classes, kernel_size=1)
 
     def forward(self, x):
         conv1 = self.conv1(x)
@@ -115,6 +116,7 @@ class UNet16(nn.Module):
     def __init__(self, num_classes, num_filters=32, pretrained=True, is_deconv=False):
         super().__init__()
         self.num_classes = num_classes
+        nf = num_filters
         e = models.vgg16(pretrained=pretrained).features
         self.pool = nn.MaxPool2d(2, 2)
         self.relu = nn.ReLU(inplace=True)
@@ -123,13 +125,13 @@ class UNet16(nn.Module):
         self.conv3 = nn.Sequential(e[10], self.relu, e[12], self.relu, e[14], self.relu)
         self.conv4 = nn.Sequential(e[17], self.relu, e[19], self.relu, e[21], self.relu)
         self.conv5 = nn.Sequential(e[24], self.relu, e[26], self.relu, e[28], self.relu)
-        self.center = DecoderBlockV2(512, num_filters * 8 * 2, num_filters * 8, is_deconv)
-        self.dec5 = DecoderBlockV2(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8, is_deconv)
-        self.dec4 = DecoderBlockV2(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8, is_deconv)
-        self.dec3 = DecoderBlockV2(256 + num_filters * 8, num_filters * 4 * 2, num_filters * 2, is_deconv)
-        self.dec2 = DecoderBlockV2(128 + num_filters * 2, num_filters * 2 * 2, num_filters, is_deconv)
-        self.dec1 = ConvRelu(64 + num_filters, num_filters)
-        self.final = nn.Conv2d(num_filters, num_classes, kernel_size=1)
+        self.center = DecoderBlockV2(512, nf * 8 * 2, nf * 8, is_deconv)
+        self.dec5 = DecoderBlockV2(512 + nf * 8, nf * 8 * 2, nf * 8, is_deconv)
+        self.dec4 = DecoderBlockV2(512 + nf * 8, nf * 8 * 2, nf * 8, is_deconv)
+        self.dec3 = DecoderBlockV2(256 + nf * 8, nf * 4 * 2, nf * 2, is_deconv)
+        self.dec2 = DecoderBlockV2(128 + nf * 2, nf * 2 * 2, nf, is_deconv)
+        self.dec1 = ConvRelu(64 + nf, nf)
+        self.final = nn.Conv2d(nf, num_classes, kernel_size=1)
 
     def forward(self, x):
         conv1 = self.conv1(x)
