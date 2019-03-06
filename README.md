@@ -26,7 +26,7 @@ $ python infer.py ./weights/100.pt ./tmp/hoge.jpg
 $ conda env export | grep -v "^prefix: " > ./environment.yml
 ```
 
-### load env
+### update env
 
 ```
 $ conda env update
