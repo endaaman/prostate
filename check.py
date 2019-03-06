@@ -66,6 +66,7 @@ NET = {
     'unet16bn': UNet16bn,
 }[NET_NAME.lower()]
 model = NET(num_classes=NUM_CLASSES)
+print(model)
 model = model.to(device)
 if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
@@ -85,4 +86,5 @@ with torch.no_grad():
 
 mask_arr = post_process(output_tensor.data[0].cpu(), original_dims)
 print('output dims: ', mask_arr.shape)
+print(mask_arr[:100])
 print(f'Finished inference.')

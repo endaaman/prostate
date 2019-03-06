@@ -33,18 +33,18 @@ class Interpolate(nn.Module):
 
 
 class DecoderBlock(nn.Module):
-    def __init__(self, in_, mid, out, bn=False, interpolation=False):
+    def __init__(self, in_, mid, out, kernel_size=4, bn=False, interpolation=False):
         super(DecoderBlock, self).__init__()
-        if interpolation:
+        if not interpolation:
+            modules = [
+                ConvRelu(in_, mid),
+                nn.ConvTranspose2d(mid, out, kernel_size=kernel_size, stride=2, padding=kernel//2-1),
+            ]
+        else:
             modules = [
                 Interpolate(scale_factor=2, mode='bilinear'),
                 ConvRelu(in_, mid),
                 nn.Conv2d(mid, out, 3, padding=1),
-            ]
-        else:
-            modules = [
-                ConvRelu(in_, mid),
-                nn.ConvTranspose2d(mid, out, kernel_size=4, stride=2, padding=1),
             ]
         if bn:
             modules.append(nn.BatchNorm2d(out))
@@ -74,7 +74,6 @@ class UNet11(nn.Module):
         self.dec3 = DecoderBlock(nf * (8 + 4), nf * 4 * 2, nf * 2)
         self.dec2 = DecoderBlock(nf * (4 + 2), nf * 2 * 2, nf)
         self.dec1 = ConvRelu(nf * (2 + 1), nf)
-
         self.final = nn.Conv2d(nf, num_classes, kernel_size=1)
 
     def forward(self, x):
@@ -153,7 +152,7 @@ class UNet11bn(nn.Module):
         self.dec5 = DecoderBlock(nf * (16 + 8), nf * 8 * 2, nf * 8, bn=True)
         self.dec4 = DecoderBlock(nf * (16 + 8), nf * 8 * 2, nf * 4, bn=True)
         self.dec3 = DecoderBlock(nf * (8 + 4), nf * 4 * 2, nf * 2, bn=True)
-        self.dec2 = DecoderBlock(nf * (4 + 2), nf * 2 * 2, nf, bn=True, interpolation=True)
+        self.dec2 = DecoderBlock(nf * (4 + 2), nf * 2 * 2, nf, bn=True)
         self.dec1 = ConvRelu(nf * (2 + 1), nf)
         self.final = nn.Conv2d(nf, num_classes, kernel_size=1)
 
