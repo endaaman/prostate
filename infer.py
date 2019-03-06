@@ -27,8 +27,8 @@ NUM_CLASSES = 3
 
 weight_path = args.weight
 input_path = args.input
-base_bane = os.path.splitext(os.path.basename(input_path))[0]
-output_dir = f'./out/{NET_NAME.lower()}/{base_bane}'
+base_name = os.path.splitext(os.path.basename(input_path))[0]
+output_dir = f'./out/{NET_NAME.lower()}/{base_name}'
 os.makedirs(output_dir, exist_ok=True)
 output_img_path = f'{output_dir}/out.png'
 output_arr_path = f'{output_dir}/out.npy'

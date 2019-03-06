@@ -33,7 +33,7 @@ class Interpolate(nn.Module):
 
 
 class DecoderBlock(nn.Module):
-    def __init__(self, in_, mid, out, bn=False, interpolation=True):
+    def __init__(self, in_, mid, out, bn=False, interpolation=False):
         super(DecoderBlock, self).__init__()
         if interpolation:
             modules = [
@@ -141,6 +141,7 @@ class UNet11bn(nn.Module):
         super().__init__()
         self.num_classes = num_classes
         e = models.vgg11_bn(pretrained=pretrained).features
+        nf = num_filters
         self.pool = nn.MaxPool2d(2, 2)
         self.relu = nn.ReLU(inplace=True)
         self.conv1 = nn.Sequential(e[0], e[1], self.relu)
@@ -148,13 +149,13 @@ class UNet11bn(nn.Module):
         self.conv3 = nn.Sequential(e[8], e[9], self.relu, e[11], e[12])
         self.conv4 = nn.Sequential(e[15], e[16], self.relu, e[18], e[19])
         self.conv5 = nn.Sequential(e[22], e[23], self.relu, e[25], e[26])
-        self.center = DecoderBlock(num_filters * 8 * 2, num_filters * 8 * 2, num_filters * 8, bn=True)
-        self.dec5 = DecoderBlock(num_filters * (16 + 8), num_filters * 8 * 2, num_filters * 8, bn=True)
-        self.dec4 = DecoderBlock(num_filters * (16 + 8), num_filters * 8 * 2, num_filters * 4, bn=True)
-        self.dec3 = DecoderBlock(num_filters * (8 + 4), num_filters * 4 * 2, num_filters * 2, bn=True)
-        self.dec2 = DecoderBlock(num_filters * (4 + 2), num_filters * 2 * 2, num_filters, bn=True)
-        self.dec1 = ConvRelu(num_filters * (2 + 1), num_filters)
-        self.final = nn.Conv2d(num_filters, num_classes, kernel_size=1)
+        self.center = DecoderBlock(nf * 8 * 2, nf * 8 * 2, nf * 8, bn=True)
+        self.dec5 = DecoderBlock(nf * (16 + 8), nf * 8 * 2, nf * 8, bn=True)
+        self.dec4 = DecoderBlock(nf * (16 + 8), nf * 8 * 2, nf * 4, bn=True)
+        self.dec3 = DecoderBlock(nf * (8 + 4), nf * 4 * 2, nf * 2, bn=True)
+        self.dec2 = DecoderBlock(nf * (4 + 2), nf * 2 * 2, nf, bn=True, interpolation=True)
+        self.dec1 = ConvRelu(nf * (2 + 1), nf)
+        self.final = nn.Conv2d(nf, num_classes, kernel_size=1)
 
     def forward(self, x):
         conv1 = self.conv1(x)
