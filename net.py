@@ -33,12 +33,12 @@ class Interpolate(nn.Module):
 
 
 class DecoderBlock(nn.Module):
-    def __init__(self, in_, mid, out, kernel_size=4, bn=True, interpolation=False):
+    def __init__(self, in_, mid, out, kernel_size=None, bn=True):
         super(DecoderBlock, self).__init__()
-        if not interpolation:
+        if kernel_size:
             modules = [
                 ConvRelu(in_, mid),
-                nn.ConvTranspose2d(mid, out, kernel_size=kernel_size, stride=2, padding=kernel//2-1),
+                nn.ConvTranspose2d(mid, out, kernel_size=kernel_size, stride=2, padding=kernel_size//2-1),
             ]
         else:
             modules = [
@@ -68,11 +68,11 @@ class UNet11(nn.Module):
         self.conv3 = nn.Sequential(e[8], e[9], self.relu, e[11], e[12])
         self.conv4 = nn.Sequential(e[15], e[16], self.relu, e[18], e[19])
         self.conv5 = nn.Sequential(e[22], e[23], self.relu, e[25], e[26])
-        self.center = DecoderBlock(nf * 8 * 2, nf * 8 * 2, nf * 8)
-        self.dec5 = DecoderBlock(nf * (16 + 8), nf * 8 * 2, nf * 8)
-        self.dec4 = DecoderBlock(nf * (16 + 8), nf * 8 * 2, nf * 4)
-        self.dec3 = DecoderBlock(nf * (8 + 4), nf * 4 * 2, nf * 2)
-        self.dec2 = DecoderBlock(nf * (4 + 2), nf * 2 * 2, nf)
+        self.center = DecoderBlock(nf * 8 * 2, nf * 8 * 2, nf * 8, 2)
+        self.dec5 = DecoderBlock(nf * (16 + 8), nf * 8 * 2, nf * 8, 2)
+        self.dec4 = DecoderBlock(nf * (16 + 8), nf * 8 * 2, nf * 4, 2)
+        self.dec3 = DecoderBlock(nf * (8 + 4), nf * 4 * 2, nf * 2, 2)
+        self.dec2 = DecoderBlock(nf * (4 + 2), nf * 2 * 2, nf, 2)
         self.dec1 = ConvRelu(nf * (2 + 1), nf)
         self.final = nn.Conv2d(nf, num_classes, kernel_size=1)
 
@@ -88,10 +88,7 @@ class UNet11(nn.Module):
         dec3 = self.dec3(torch.cat([dec4, conv3], 1))
         dec2 = self.dec2(torch.cat([dec3, conv2], 1))
         dec1 = self.dec1(torch.cat([dec2, conv1], 1))
-        if self.num_classes > 1:
-            x_out = F.log_softmax(self.final(dec1), dim=1)
-        else:
-            x_out = self.final(dec1)
+        x_out = self.final(dec1)
         return torch.sigmoid(x_out)
 
 
@@ -99,6 +96,7 @@ class UNet16(nn.Module):
     def __init__(self, num_classes, num_filters=32, pretrained=True):
         super().__init__()
         self.num_classes = num_classes
+        nf = num_filters
         e = models.vgg16_bn(pretrained=pretrained).features
         self.pool = nn.MaxPool2d(2, 2)
         self.relu = nn.ReLU(inplace=True)
@@ -107,13 +105,13 @@ class UNet16(nn.Module):
         self.conv3 = nn.Sequential(e[14], e[15], self.relu, e[17], e[18], self.relu, e[20], e[21], self.relu)
         self.conv4 = nn.Sequential(e[24], e[25], self.relu, e[27], e[28], self.relu, e[30], e[31], self.relu)
         self.conv5 = nn.Sequential(e[34], e[35], self.relu, e[37], e[38], self.relu, e[40], e[41], self.relu)
-        self.center = DecoderBlock(512, num_filters * 8 * 2, num_filters * 8)
-        self.dec5 = DecoderBlock(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8)
-        self.dec4 = DecoderBlock(512 + num_filters * 8, num_filters * 8 * 2, num_filters * 8)
-        self.dec3 = DecoderBlock(256 + num_filters * 8, num_filters * 4 * 2, num_filters * 2)
-        self.dec2 = DecoderBlock(128 + num_filters * 2, num_filters * 2 * 2, num_filters)
-        self.dec1 = ConvRelu(64 + num_filters, num_filters)
-        self.final = nn.Conv2d(num_filters, num_classes, kernel_size=1)
+        self.center = DecoderBlock(512, nf * 8 * 2, nf * 8, kernel_size=4)
+        self.dec5 = DecoderBlock(512 + nf * 8, nf * 8 * 2, nf * 8, 2)
+        self.dec4 = DecoderBlock(512 + nf * 8, nf * 8 * 2, nf * 8, 2)
+        self.dec3 = DecoderBlock(256 + nf * 8, nf * 4 * 2, nf * 2, 2)
+        self.dec2 = DecoderBlock(128 + nf * 2, nf * 2 * 2, nf, 2)
+        self.dec1 = ConvRelu(64 + nf, nf)
+        self.final = nn.Conv2d(nf, num_classes, kernel_size=1)
 
     def forward(self, x):
         conv1 = self.conv1(x)
@@ -127,8 +125,5 @@ class UNet16(nn.Module):
         dec3 = self.dec3(torch.cat([dec4, conv3], 1))
         dec2 = self.dec2(torch.cat([dec3, conv2], 1))
         dec1 = self.dec1(torch.cat([dec2, conv1], 1))
-        if self.num_classes > 1:
-            x_out = F.log_softmax(self.final(dec1), dim=1)
-        else:
-            x_out = self.final(dec1)
+        x_out = self.final(dec1)
         return torch.sigmoid(x_out)

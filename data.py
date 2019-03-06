@@ -4,13 +4,13 @@ import cv2
 import scipy.ndimage
 from torchvision.transforms import ToTensor, Normalize, Compose
 from torch.utils.data import Dataset, DataLoader
-TILE_SIZE = 224
 
 
 class BaseDataset(Dataset):
-    def __init__(self, transform_x=None, transform_y=None):
+    def __init__(self, transform_x=None, transform_y=None, tile_size=224):
         self.transform_x = transform_x
         self.transform_y = transform_y
+        self.tile_size = tile_size
         base_dir = './train/full'
         file_names = os.listdir(f'{base_dir}/y')
         self.names = []
@@ -34,19 +34,20 @@ class BaseDataset(Dataset):
     def select(self):
         p = []
         for i in self.y_raws:
-            p.append((i.shape[0] - TILE_SIZE) * (i.shape[1] - TILE_SIZE))
+            p.append((i.shape[0] - self.tile_size) * (i.shape[1] - self.tile_size))
         p = np.array(p / np.sum(p))
         use_patch = False
+        size = self.tile_size
         while not use_patch:
             i = np.random.choice(len(self.y_raws), 1, p=p)[0]
             y_raw = self.y_raws[i]
             x_raw = self.x_raws[i]
             image_h, image_w, _ = y_raw.shape
-            left = np.random.randint(image_w - TILE_SIZE)
-            top = np.random.randint(image_h - TILE_SIZE)
-            y_arr = y_raw[top:top + TILE_SIZE, left:left + TILE_SIZE]
+            left = np.random.randint(image_w - size)
+            top = np.random.randint(image_h - size)
+            y_arr = y_raw[top:top + size, left:left + size]
             use_patch = np.any(y_arr != 0)
-        x_arr = x_raw[top:top + TILE_SIZE, left:left + TILE_SIZE]
+        x_arr = x_raw[top:top + size, left:left + size]
         return (x_arr, y_arr)
 
 
@@ -67,7 +68,7 @@ class DefaultDataset(BaseDataset):
     def __len__(self):
         l = 0
         for i in self.y_raws:
-            l += (i.shape[0] // TILE_SIZE) * (i.shape[1] // TILE_SIZE)
+            l += (i.shape[0] // self.tile_size) * (i.shape[1] // self.tile_size)
         return l * 8
 
     def __getitem__(self, _idx):
@@ -75,13 +76,14 @@ class DefaultDataset(BaseDataset):
         op = np.random.randint(8)
         x_arr = self.flip_and_rot90(x_arr, op)
         y_arr = self.flip_and_rot90(y_arr, op)
+        size = self.tile_size
         if np.random.rand() < self.p_rotation:
             degree = np.random.randint(45)
             x_arr = self.rotate(x_arr, degree)
             y_arr = self.rotate(y_arr, degree)
             h, w = x_arr.shape[0:2]
-            top = np.random.randint(h - TILE_SIZE) if h > TILE_SIZE else 0
-            left = np.random.randint(w - TILE_SIZE) if w > TILE_SIZE else 0
-            x_arr = x_arr[top:top + TILE_SIZE, left:left + TILE_SIZE]
-            y_arr = y_arr[top:top + TILE_SIZE, left:left + TILE_SIZE]
+            top = np.random.randint(h - size) if h > size else 0
+            left = np.random.randint(w - size) if w > size else 0
+            x_arr = x_arr[top:top + size, left:left + size]
+            y_arr = y_arr[top:top + size, left:left + size]
         return self.transform(x_arr.copy(), y_arr.copy())

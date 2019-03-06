@@ -9,29 +9,29 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
-from net import UNet11, UNet11bn, UNet16, UNet16bn
+from net import UNet11, UNet16
 from data import DefaultDataset
 from utils import now_str, dice_coef, argmax_acc, curry
 
 parser = argparse.ArgumentParser()
 parser.add_argument('weight', default=None, nargs='?')
 parser.add_argument('-b', '--batch-size', type=int, default=32)
-parser.add_argument('-e', '--epoch', type=int, default=300)
-parser.add_argument('-n', '--net', default='UNet11bn')
+parser.add_argument('-e', '--epoch', type=int, default=50)
+parser.add_argument('-t', '--tile', type=int, default=224)
+parser.add_argument('-n', '--net', default='UNet11')
 parser.add_argument('--num-workers', type=int, default=4)
 parser.add_argument('--single-gpu', action="store_true")
 parser.add_argument('--cpu', action="store_true")
-parser.add_argument('--vanilla', action="store_true")
 args = parser.parse_args()
 
 STARTING_WEIGHT = args.weight
 BATCH_SIZE = args.batch_size
 NUM_WORKERS = args.num_workers
 EPOCH_COUNT = args.epoch
+TILE_SIZE = args.tile
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and not args.single_gpu
 NET_NAME = args.net
-VANILLA = args.vanilla
 
 print(f'Preparing NET:{NET_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} GPU:{USE_GPU} MULTI_GPU:{USE_MULTI_GPU} ({now_str()})')
 
@@ -68,19 +68,16 @@ data_set = DefaultDataset(
             ToTensor(),
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ]),
-        transform_y = transform_y)
+        transform_y = transform_y,
+        tile_size=TILE_SIZE)
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
 device = 'cuda' if USE_GPU else 'cpu'
 NET = {
     'unet11': UNet11,
     'unet16': UNet16,
-    'unet11bn': UNet11bn,
-    'unet16bn': UNet16bn,
     'unet11v': curry(UNet11, pretrained=False),
     'unet16v': curry(UNet16, pretrained=False),
-    'unet11vbn': curry(UNet11bn, pretrained=False),
-    'unet16vbn': curry(UNet16bn, pretrained=False),
 }[NET_NAME.lower()]
 model = NET(num_classes=NUM_CLASSES)
 model = model.to(device)
@@ -96,7 +93,7 @@ print(f'Starting ({now_str()})')
 epoch = first_epoch
 weight_dir = f'./weights/{NET_NAME}'
 os.makedirs(weight_dir, exist_ok=True)
-while epoch <= EPOCH_COUNT:
+while epoch < first_epoch + EPOCH_COUNT:
     message = None
     dice_accs = []
     accs = []
@@ -114,11 +111,11 @@ while epoch <= EPOCH_COUNT:
         optimizer.step()
         if message:
             sys.stdout.write('\r' * len(message))
-        message = f'epoch[{epoch}]: {i+1} / {len(data_set) // BATCH_SIZE} dice acc: {dice_acc:.5f} acc: {acc:.5f} loss: {loss:.5f} ({now_str()})'
+        message = f'epoch[{epoch}]: {i+1} / {len(data_set) // BATCH_SIZE} dice: {dice_acc:.5f} iou: {acc:.5f} loss: {loss:.5f} ({now_str()})'
         sys.stdout.write(message)
         sys.stdout.flush()
     print('')
-    print(f'epoch[{epoch}]: Done. dice acc:{np.average(dice_accs):.5f} acc:{np.average(accs):.5f} ({now_str()})')
+    print(f'epoch[{epoch}]: Done. dice:{np.average(dice_accs):.5f} iou:{np.average(accs):.5f} ({now_str()})')
 
     weight_path = f'./{weight_dir}/{epoch}.pt'
     state = model.module.cpu().state_dict() if USE_MULTI_GPU else model.cpu().state_dict()
