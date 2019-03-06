@@ -36,7 +36,7 @@ model = NET(num_classes=NUM_CLASSES)
 print(model)
 model = model.to(device)
 
-input_img = np.random.randint(0, 256, [224, 224, 3])
+input_img = np.random.randint(0, 256, [224, 224, 3], dtype=np.uint8)
 pre_process = Compose([
     ToTensor(),
     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
