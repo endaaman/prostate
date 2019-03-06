@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.transforms import ToTensor, Normalize, Compose
-from net import UNet11, UNet11bn, UNet16, UNet16bn
+from net import UNet11, UNet16
 from utils import now_str, dice_coef, overlay_transparent, to_heatmap
 
 
@@ -68,8 +68,6 @@ device = 'cuda' if USE_GPU else 'cpu'
 NET = {
     'unet11': UNet11,
     'unet16': UNet16,
-    'unet11bn': UNet11bn,
-    'unet16bn': UNet16bn,
 }[NET_NAME.lower()]
 model = NET(num_classes=NUM_CLASSES)
 model = model.to(device)
