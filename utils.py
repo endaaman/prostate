@@ -1,3 +1,4 @@
+import sys
 import datetime
 import numpy as np
 import cv2
@@ -5,6 +6,15 @@ import torch
 
 def now_str():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+last_message = None
+def pp(message):
+    global last_message
+    if last_message:
+        sys.stdout.write('\r' * len(last_message))
+    last_message = message
+    sys.stdout.write(message)
+    sys.stdout.flush()
 
 def dice_coef(a, b, smooth = 1.):
     a = a.view(-1)

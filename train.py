@@ -1,4 +1,3 @@
-import sys
 import os
 import argparse
 import numpy as np
@@ -9,9 +8,10 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
+
 from net import UNet11, UNet16
 from data import DefaultDataset
-from utils import now_str, dice_coef, argmax_acc, curry
+from utils import now_str, pp, dice_coef, argmax_acc, curry
 
 parser = argparse.ArgumentParser()
 parser.add_argument('weight', default=None, nargs='?')
@@ -64,12 +64,12 @@ def transform_y(arr):
     return ToTensor()(I[INDEX_MAP[arr]])
 
 data_set = DefaultDataset(
-        transform_x = Compose([
-            ToTensor(),
-            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        ]),
-        transform_y = transform_y,
-        tile_size=TILE_SIZE)
+    transform_x = Compose([
+        ToTensor(),
+        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ]),
+    transform_y = transform_y,
+    tile_size=TILE_SIZE)
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
 device = 'cuda' if USE_GPU else 'cpu'
@@ -109,11 +109,7 @@ while epoch < first_epoch + EPOCH_COUNT:
         accs.append(acc)
         loss.backward()
         optimizer.step()
-        if message:
-            sys.stdout.write('\r' * len(message))
-        message = f'epoch[{epoch}]: {i+1} / {len(data_set) // BATCH_SIZE} dice: {dice_acc:.5f} iou: {acc:.5f} loss: {loss:.5f} ({now_str()})'
-        sys.stdout.write(message)
-        sys.stdout.flush()
+        pp(f'epoch[{epoch}]: {i+1} / {len(data_set) // BATCH_SIZE} dice: {dice_acc:.5f} iou: {acc:.5f} loss: {loss:.5f} ({now_str()})')
     print('')
     print(f'epoch[{epoch}]: Done. dice:{np.average(dice_accs):.5f} iou:{np.average(accs):.5f} ({now_str()})')
 
