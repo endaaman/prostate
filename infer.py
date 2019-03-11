@@ -13,27 +13,30 @@ from utils import now_str, dice_coef, overlay_transparent, to_heatmap
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('weight')
 parser.add_argument('input')
+parser.add_argument('-w', '--weight')
 parser.add_argument('-n', '--net')
 parser.add_argument('--single-gpu', action="store_true")
 parser.add_argument('--cpu', action="store_true")
 args = parser.parse_args()
 
+INPUT_PATH = args.input
+WEIGHT_PATH = args.weight
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and not args.single_gpu
 NET_NAME = args.net
 NUM_CLASSES = 3
+mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
+print(f'Preparing NET:{NET_NAME} GPU:{USE_GPU} MODE: {mode} NUM_CLASSES:{NUM_CLASSES} ({now_str()})')
 
-weight_path = args.weight
-input_path = args.input
-base_name = os.path.splitext(os.path.basename(input_path))[0]
+
+base_name = os.path.splitext(os.path.basename(INPUT_PATH))[0]
 output_dir = f'./out/{NET_NAME.lower()}/{base_name}'
 os.makedirs(output_dir, exist_ok=True)
 output_img_path = f'{output_dir}/out.png'
 output_arr_path = f'{output_dir}/out.npy'
 
-print(f'Preparing NET:{NET_NAME} GPU:{USE_GPU} MULTI_GPU:{USE_MULTI_GPU} NUM_CLASSES:{NUM_CLASSES} ({now_str()})')
+
 
 def add_padding(img):
     h, w = img.shape[0:2]
@@ -71,12 +74,13 @@ NET = {
 }[NET_NAME.lower()]
 model = NET(num_classes=NUM_CLASSES)
 model = model.to(device)
-model.load_state_dict(torch.load(weight_path))
+if WEIGHT_PATH:
+    model.load_state_dict(torch.load(WEIGHT_PATH))
 if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
 
 
-input_img = cv2.imread(input_path)
+input_img = cv2.imread(INPUT_PATH)
 padded_input_img, original_dims = add_padding(input_img)
 pre_process = Compose([
     ToTensor(),

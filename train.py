@@ -14,9 +14,9 @@ from data import DefaultDataset
 from utils import now_str, pp, dice_coef, argmax_acc, curry
 
 parser = argparse.ArgumentParser()
-parser.add_argument('weight', default=None, nargs='?')
+parser.add_argument('-w', '--weight')
 parser.add_argument('-b', '--batch-size', type=int, default=32)
-parser.add_argument('-e', '--epoch', type=int, default=50)
+parser.add_argument('-e', '--epoch', type=int, default=100)
 parser.add_argument('-t', '--tile', type=int, default=224)
 parser.add_argument('-n', '--net', default='UNet11')
 parser.add_argument('--num-workers', type=int, default=4)
@@ -32,8 +32,9 @@ TILE_SIZE = args.tile
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and not args.single_gpu
 NET_NAME = args.net
+mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
 
-print(f'Preparing NET:{NET_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} GPU:{USE_GPU} MULTI_GPU:{USE_MULTI_GPU} ({now_str()})')
+print(f'Preparing NET:{NET_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE: {mode} ({now_str()})')
 
 first_epoch = 1
 if STARTING_WEIGHT:
