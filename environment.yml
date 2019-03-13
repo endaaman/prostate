@@ -1,9 +1,9 @@
 name: prostate
 channels:
   - pytorch
+  - conda-forge
   - anaconda
   - defaults
-  - conda-forge
 dependencies:
   - backcall=0.1.0=py37_0
   - blas=1.0=mkl
@@ -145,6 +145,7 @@ dependencies:
   - zstd=1.3.7=h0b5b093_0
   - pip:
     - munch==2.3.2
+    - openslide-python==1.1.1
     - pretrainedmodels==0.7.4
     - tqdm==4.31.1
 
