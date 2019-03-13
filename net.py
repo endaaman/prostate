@@ -128,13 +128,10 @@ class UNet16(nn.Module):
         x_out = self.final(dec1)
         return torch.sigmoid(x_out)
 
-
+DefaultNet = UNet11
 if __name__ == '__main__':
     input_tensor = torch.rand(1,  3, 224, 224)
-    unet11 = UNet11(num_classes=4)
-    unet16 = UNet16(num_classes=4)
+    model = DefaultNet(num_classes=4)
     with torch.no_grad():
-        output_tensor = unet11(input_tensor)
-        print(output_tensor.size())
-        output16output_tensor = unet16(input_tensor)
+        output_tensor = model(input_tensor)
         print(output_tensor.size())
