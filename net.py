@@ -69,8 +69,8 @@ class UNet11(nn.Module):
         self.conv4 = nn.Sequential(e[15], e[16], self.relu, e[18], e[19])
         self.conv5 = nn.Sequential(e[22], e[23], self.relu, e[25], e[26])
         self.center = DecoderBlock(512, 512, 256, 2)
-        self.dec5 = DecoderBlock(768, 512, 256, 2) # center + conv5
-        self.dec4 = DecoderBlock(768, 512, 128, 2) # dec5 + conv4
+        self.dec5 = DecoderBlock(768, 512, 256, 2)
+        self.dec4 = DecoderBlock(768, 512, 128, 2)
         self.dec3 = DecoderBlock(384, 256, 64, 2)
         self.dec2 = DecoderBlock(192, 128, 32, 2)
         self.dec1 = ConvRelu(96, 32)
@@ -105,7 +105,7 @@ class UNet16(nn.Module):
         self.conv3 = nn.Sequential(e[14], e[15], self.relu, e[17], e[18], self.relu, e[20], e[21], self.relu)
         self.conv4 = nn.Sequential(e[24], e[25], self.relu, e[27], e[28], self.relu, e[30], e[31], self.relu)
         self.conv5 = nn.Sequential(e[34], e[35], self.relu, e[37], e[38], self.relu, e[40], e[41], self.relu)
-        self.center = DecoderBlock(512, 512, 256, kernel_size=4)
+        self.center = DecoderBlock(512, 512, 256, 4)
         self.dec5 = DecoderBlock(768, 512, 256, 2)
         self.dec4 = DecoderBlock(768, 512, 256, 2)
         self.dec3 = DecoderBlock(512, 256, 64, 2)
