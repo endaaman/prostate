@@ -68,13 +68,13 @@ class UNet11(nn.Module):
         self.conv3 = nn.Sequential(e[8], e[9], self.relu, e[11], e[12])
         self.conv4 = nn.Sequential(e[15], e[16], self.relu, e[18], e[19])
         self.conv5 = nn.Sequential(e[22], e[23], self.relu, e[25], e[26])
-        self.center = DecoderBlock(nf * 8 * 2, nf * 8 * 2, nf * 8, 2)
-        self.dec5 = DecoderBlock(nf * (16 + 8), nf * 8 * 2, nf * 8, 2)
-        self.dec4 = DecoderBlock(nf * (16 + 8), nf * 8 * 2, nf * 4, 2)
-        self.dec3 = DecoderBlock(nf * (8 + 4), nf * 4 * 2, nf * 2, 2)
-        self.dec2 = DecoderBlock(nf * (4 + 2), nf * 2 * 2, nf, 2)
-        self.dec1 = ConvRelu(nf * (2 + 1), nf)
-        self.final = nn.Conv2d(nf, num_classes, kernel_size=1)
+        self.center = DecoderBlock(512, 512, 256, 2)
+        self.dec5 = DecoderBlock(768, 512, 256, 2) # center + conv5
+        self.dec4 = DecoderBlock(768, 512, 128, 2) # dec5 + conv4
+        self.dec3 = DecoderBlock(384, 256, 64, 2)
+        self.dec2 = DecoderBlock(192, 128, 32, 2)
+        self.dec1 = ConvRelu(96, 32)
+        self.final = nn.Conv2d(32, num_classes, kernel_size=1)
 
     def forward(self, x):
         conv1 = self.conv1(x)
@@ -105,13 +105,13 @@ class UNet16(nn.Module):
         self.conv3 = nn.Sequential(e[14], e[15], self.relu, e[17], e[18], self.relu, e[20], e[21], self.relu)
         self.conv4 = nn.Sequential(e[24], e[25], self.relu, e[27], e[28], self.relu, e[30], e[31], self.relu)
         self.conv5 = nn.Sequential(e[34], e[35], self.relu, e[37], e[38], self.relu, e[40], e[41], self.relu)
-        self.center = DecoderBlock(512, nf * 8 * 2, nf * 8, kernel_size=4)
-        self.dec5 = DecoderBlock(512 + nf * 8, nf * 8 * 2, nf * 8, 2)
-        self.dec4 = DecoderBlock(512 + nf * 8, nf * 8 * 2, nf * 8, 2)
-        self.dec3 = DecoderBlock(256 + nf * 8, nf * 4 * 2, nf * 2, 2)
-        self.dec2 = DecoderBlock(128 + nf * 2, nf * 2 * 2, nf, 2)
-        self.dec1 = ConvRelu(64 + nf, nf)
-        self.final = nn.Conv2d(nf, num_classes, kernel_size=1)
+        self.center = DecoderBlock(512, 512, 256, kernel_size=4)
+        self.dec5 = DecoderBlock(768, 512, 256, 2)
+        self.dec4 = DecoderBlock(768, 512, 256, 2)
+        self.dec3 = DecoderBlock(512, 256, 64, 2)
+        self.dec2 = DecoderBlock(192, 128, 32, 2)
+        self.dec1 = ConvRelu(96, 32)
+        self.final = nn.Conv2d(32, num_classes, kernel_size=1)
 
     def forward(self, x):
         conv1 = self.conv1(x)
