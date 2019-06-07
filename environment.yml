@@ -9,10 +9,11 @@ dependencies:
   - blas=1.0=mkl
   - bleach=3.1.0=py_0
   - bzip2=1.0.6=h14c3975_1002
-  - ca-certificates=2019.1.23=0
+  - ca-certificates=2019.5.15=0
   - cairo=1.14.12=h8948797_3
-  - certifi=2018.11.29=py37_0
+  - certifi=2019.3.9=py37_0
   - cffi=1.11.5=py37he75722e_1
+  - click=7.0=py37_0
   - cuda100=1.0=0
   - cuda90=1.0=h6433d27_0
   - cudatoolkit=10.0.130=0
@@ -22,6 +23,7 @@ dependencies:
   - entrypoints=0.3=py37_0
   - expat=2.2.6=he6710b0_0
   - ffmpeg=4.0.2=ha0c5888_2
+  - flask=1.0.3=py37_0
   - fontconfig=2.13.0=h9420a91_0
   - freeglut=3.0.0=hf484d3e_1005
   - freetype=2.9.1=h8a8886c_1
@@ -39,6 +41,7 @@ dependencies:
   - ipython=7.2.0=py37h39e3cac_0
   - ipython_genutils=0.2.0=py37_0
   - ipywidgets=7.4.2=py37_0
+  - itsdangerous=1.1.0=py37_0
   - jasper=2.0.14=h07fcdf6_1
   - jedi=0.13.2=py37_0
   - jinja2=2.10=py37_0
@@ -126,6 +129,7 @@ dependencies:
   - traitlets=4.3.2=py37_0
   - wcwidth=0.1.7=py37_0
   - webencodings=0.5.1=py37_1
+  - werkzeug=0.15.4=py_0
   - wheel=0.32.3=py37_0
   - widgetsnbextension=3.4.2=py37_0
   - x264=1!152.20180717=h14c3975_1001
