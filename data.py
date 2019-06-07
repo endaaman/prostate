@@ -1,4 +1,5 @@
 import os
+from errno import ENOENT
 import numpy as np
 import cv2
 import scipy.ndimage
@@ -6,22 +7,27 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 from torch.utils.data import Dataset, DataLoader
 
 
+
 class BaseDataset(Dataset):
+    def read_image(self, name):
+        raw = cv2.imread(name, cv2.IMREAD_UNCHANGED)
+        if not type(raw) is np.ndarray:
+            raise FileNotFoundError(ENOENT, os.strerror(ENOENT), name)
+        return raw
+
     def __init__(self, transform_x=None, transform_y=None, tile_size=224):
         self.transform_x = transform_x
         self.transform_y = transform_y
         self.tile_size = tile_size
-        base_dir = './train/full'
+        base_dir = './train'
         file_names = os.listdir(f'{base_dir}/y')
         self.names = []
         self.x_raws = []
         self.y_raws = []
         for file_name in file_names:
             base_name, ext_name = os.path.splitext(file_name)
-            x_raw = cv2.imread(f'{base_dir}/x/{base_name}.jpg')
-            y_raw = cv2.imread(f'{base_dir}/y/{base_name}.png', cv2.IMREAD_UNCHANGED)
-            self.x_raws.append(x_raw)
-            self.y_raws.append(y_raw)
+            self.x_raws.append(self.read_image(f'{base_dir}/x/{base_name}.jpg'))
+            self.y_raws.append(self.read_image(f'{base_dir}/y/{base_name}.png'))
             self.names.append(base_name)
 
     def transform(self, x, y):

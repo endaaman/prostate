@@ -1,5 +1,6 @@
 import os
 import argparse
+from enum import Enum, auto
 import numpy as np
 import torch
 import torch.nn as nn
@@ -13,6 +14,8 @@ from net import UNet11, UNet16
 from data import DefaultDataset
 from utils import now_str, pp, dice_coef, argmax_acc, curry
 
+IDX_NONE, IDX_NORMAL, IDX_GLEASON_3, IDX_GLEASON_4, IDX_GLEASON_5 = range(5)
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-w', '--weight')
 parser.add_argument('-b', '--batch-size', type=int, default=32)
@@ -21,6 +24,7 @@ parser.add_argument('-t', '--tile', type=int, default=224)
 parser.add_argument('-n', '--net', default='UNet11')
 parser.add_argument('--num-workers', type=int, default=4)
 parser.add_argument('--single-gpu', action="store_true")
+# parser.add_argument('--accurated', action="store_true")
 parser.add_argument('--cpu', action="store_true")
 args = parser.parse_args()
 
@@ -29,6 +33,7 @@ BATCH_SIZE = args.batch_size
 NUM_WORKERS = args.num_workers
 EPOCH_COUNT = args.epoch
 TILE_SIZE = args.tile
+# ACCURATED = args.accurated
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and not args.single_gpu
 NET_NAME = args.net
@@ -45,15 +50,15 @@ if STARTING_WEIGHT:
     first_epoch = int(num) + 1
 
 INDEX_MAP = np.array([
-    0, # empty
-    1, # 000: black
-    2, # B00: blue
-    2, # 0G0: green
-    1, # BG0: cyan
-    2, # 00R: red
-    1, # B0R: purple
-    1, # 0GR: yellow
-    1, # RGB: white
+    IDX_NONE,      # empty
+    IDX_NORMAL,    # 000: black
+    IDX_GLEASON_3, # B00: blue
+    IDX_GLEASON_4, # 0G0: green
+    IDX_GLEASON_3, # BG0: cyan
+    IDX_GLEASON_5, # 00R: red
+    IDX_NORMAL,    # B0R: purple
+    IDX_GLEASON_5, # 0GR: yellow
+    IDX_NONE,      # RGB: white
 ])
 NUM_CLASSES = len(np.unique(INDEX_MAP))
 I = np.identity(NUM_CLASSES, dtype=np.float32)
