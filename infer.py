@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.transforms import ToTensor, Normalize, Compose
 from net import UNet11, UNet16
-from utils import now_str, dice_coef, overlay_transparent, to_heatmap
+from utils import now_str, overlay_transparent, to_heatmap
 
 
 parser = argparse.ArgumentParser()
