@@ -33,8 +33,6 @@ print(f'Preparing NET:{NET_NAME} GPU:{USE_GPU} MODE: {mode} NUM_CLASSES:{NUM_CLA
 base_name = os.path.splitext(os.path.basename(INPUT_PATH))[0]
 output_dir = f'./out/{NET_NAME.lower()}/{base_name}'
 os.makedirs(output_dir, exist_ok=True)
-output_img_path = f'{output_dir}/out.png'
-output_arr_path = f'{output_dir}/out.npy'
 
 
 
@@ -96,11 +94,13 @@ with torch.no_grad():
 
 mask_arr = post_process(output_tensor.data[0].cpu(), original_dims)
 print(f'Finished inference.')
+np.save(f'{output_dir}/out.npy', mask_arr)
 
 cv2.imwrite(f'{output_dir}/org.jpg', input_img)
 mask_img = to_standard(mask_arr)
-cv2.imwrite(output_img_path, mask_img)
-np.save(output_arr_path, mask_arr)
+cv2.imwrite(f'{output_dir}/out.png', mask_img)
+masked_img = overlay_transparent(input_img, mask_img)
+cv2.imwrite(f'{output_dir}/masked.png', masked_img)
 for i in range(NUM_CLASSES):
     img = to_heatmap(mask_arr[:, :, i])
     cv2.imwrite(f'{output_dir}/heat_{i}.png', img)

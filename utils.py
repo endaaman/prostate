@@ -48,7 +48,6 @@ def to_heatmap(org, base_color=[0, 255, 0]):
     img = np.dstack((img, va))
     return img
 
-
 def overlay_transparent(background_img, img_to_overlay_t, x=0, y=0, overlay_size=None):
     bg_img = background_img.copy()
     if overlay_size is not None:
