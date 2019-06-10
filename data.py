@@ -37,6 +37,9 @@ class BaseDataset(Dataset):
             y = self.transform_y(y)
         return x, y
 
+    def check_available(self, arr):
+        return np.any(arr != 0)
+
     def select(self):
         p = []
         for i in self.y_raws:
@@ -52,7 +55,7 @@ class BaseDataset(Dataset):
             left = np.random.randint(image_w - size)
             top = np.random.randint(image_h - size)
             y_arr = y_raw[top:top + size, left:left + size]
-            use_patch = np.any(y_arr != 0)
+            use_patch = self.check_available(y_arr)
         x_arr = x_raw[top:top + size, left:left + size]
         return (x_arr, y_arr)
 

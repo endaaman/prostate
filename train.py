@@ -36,7 +36,7 @@ TILE_SIZE = args.tile
 # ACCURATED = args.accurated
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and not args.single_gpu
-NET_NAME = args.net
+NET_NAME = args.net.lower()
 mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
 
 print(f'Preparing NET:{NET_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE: {mode} ({now_str()})')
@@ -82,9 +82,9 @@ device = 'cuda' if USE_GPU else 'cpu'
 NET = {
     'unet11': UNet11,
     'unet16': UNet16,
-    'unet11v': curry(UNet11, pretrained=False),
-    'unet16v': curry(UNet16, pretrained=False),
-}[NET_NAME.lower()]
+    'unet11u': curry(UNet11, upsample=True),
+    'unet16u': curry(UNet16, upsample=True),
+}[NET_NAME]
 model = NET(num_classes=NUM_CLASSES)
 model = model.to(device)
 if STARTING_WEIGHT:

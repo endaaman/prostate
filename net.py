@@ -33,7 +33,7 @@ class Interpolate(nn.Module):
 
 
 class DecoderBlock(nn.Module):
-    def __init__(self, in_, mid, out, kernel_size=None, bn=True):
+    def __init__(self, in_, mid, out, kernel_size=None):
         super(DecoderBlock, self).__init__()
         if kernel_size:
             modules = [
@@ -46,8 +46,7 @@ class DecoderBlock(nn.Module):
                 ConvRelu(in_, mid),
                 nn.Conv2d(mid, out, 3, padding=1),
             ]
-        if bn:
-            modules.append(nn.BatchNorm2d(out))
+        modules.append(nn.BatchNorm2d(out))
         modules.append(nn.ReLU(inplace=True))
         self.block = nn.Sequential(*modules)
 
@@ -56,11 +55,11 @@ class DecoderBlock(nn.Module):
 
 
 class UNet11(nn.Module):
-    def __init__(self, num_classes, pretrained=True, num_filters=32):
+    def __init__(self, num_classes, upsample=False):
         super().__init__()
         self.num_classes = num_classes
-        e = models.vgg11_bn(pretrained=pretrained).features
-        nf = num_filters
+        e = models.vgg11_bn(pretrained=True).features
+        ks = 2 if not upsample else None
         self.pool = nn.MaxPool2d(2, 2)
         self.relu = nn.ReLU(inplace=True)
         self.conv1 = nn.Sequential(e[0], e[1], self.relu)
@@ -68,11 +67,11 @@ class UNet11(nn.Module):
         self.conv3 = nn.Sequential(e[8], e[9], self.relu, e[11], e[12])
         self.conv4 = nn.Sequential(e[15], e[16], self.relu, e[18], e[19])
         self.conv5 = nn.Sequential(e[22], e[23], self.relu, e[25], e[26])
-        self.center = DecoderBlock(512, 512, 256, 2)
-        self.dec5 = DecoderBlock(768, 512, 256, 2)
-        self.dec4 = DecoderBlock(768, 512, 128, 2)
-        self.dec3 = DecoderBlock(384, 256, 64, 2)
-        self.dec2 = DecoderBlock(192, 128, 32, 2)
+        self.center = DecoderBlock(512, 512, 256, ks)
+        self.dec5 = DecoderBlock(768, 512, 256, ks)
+        self.dec4 = DecoderBlock(768, 512, 128, ks)
+        self.dec3 = DecoderBlock(384, 256, 64, ks)
+        self.dec2 = DecoderBlock(192, 128, 32, ks)
         self.dec1 = ConvRelu(96, 32)
         self.final = nn.Conv2d(32, num_classes, kernel_size=1)
 
@@ -93,11 +92,10 @@ class UNet11(nn.Module):
 
 
 class UNet16(nn.Module):
-    def __init__(self, num_classes, num_filters=32, pretrained=True):
+    def __init__(self, num_classes, upsample=True):
         super().__init__()
         self.num_classes = num_classes
-        nf = num_filters
-        e = models.vgg16_bn(pretrained=pretrained).features
+        e = models.vgg16_bn(pretrained=True).features
         self.pool = nn.MaxPool2d(2, 2)
         self.relu = nn.ReLU(inplace=True)
         self.conv1 = nn.Sequential(e[0], e[1], self.relu, e[3], e[4], self.relu)
@@ -130,7 +128,7 @@ class UNet16(nn.Module):
 
 DefaultNet = UNet11
 if __name__ == '__main__':
-    input_tensor = torch.rand(1,  3, 224, 224)
+    input_tensor = torch.rand(1, 3, 224, 224)
     model = DefaultNet(num_classes=4)
     with torch.no_grad():
         output_tensor = model(input_tensor)

@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.transforms import ToTensor, Normalize, Compose
 from net import UNet11, UNet16
-from utils import now_str, save_report
+from utils import now_str, save_report, curry
 
 
 parser = argparse.ArgumentParser()
@@ -24,14 +24,14 @@ INPUT_PATH = args.input
 WEIGHT_PATH = args.weight
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and not args.single_gpu
-NET_NAME = args.net
+NET_NAME = args.net.lower()
 NUM_CLASSES = 5
 mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
 print(f'Preparing NET:{NET_NAME} GPU:{USE_GPU} MODE: {mode} NUM_CLASSES:{NUM_CLASSES} ({now_str()})')
 
 
 base_name = os.path.splitext(os.path.basename(INPUT_PATH))[0]
-output_dir = f'./out/{NET_NAME.lower()}/{base_name}'
+output_dir = f'./out/{NET_NAME}/{base_name}'
 os.makedirs(output_dir, exist_ok=True)
 
 
@@ -71,8 +71,11 @@ device = 'cuda' if USE_GPU else 'cpu'
 NET = {
     'unet11': UNet11,
     'unet16': UNet16,
-}[NET_NAME.lower()]
+    'unet11u': curry(UNet11, upsample=True),
+    'unet16u': curry(UNet16, upsample=True),
+}[NET_NAME]
 model = NET(num_classes=NUM_CLASSES).to(device)
+
 if WEIGHT_PATH:
     model.load_state_dict(torch.load(WEIGHT_PATH))
 if USE_MULTI_GPU:
