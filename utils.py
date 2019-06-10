@@ -61,3 +61,14 @@ def overlay_transparent(background_img, img_to_overlay_t, x=0, y=0, overlay_size
     img2_fg = cv2.bitwise_and(overlay_color, overlay_color, mask = mask)
     bg_img[y:y+h, x:x+w] = cv2.add(img1_bg, img2_fg)
     return bg_img
+
+def save_report(output_dir, input_img, mask_img):
+    cv2.imwrite(f'{output_dir}/org.jpg', input_img)
+    cv2.imwrite(f'{output_dir}/out.png', mask_img)
+    masked_img = overlay_transparent(input_img, mask_img)
+    cv2.imwrite(f'{output_dir}/masked.png', masked_img)
+    for i in range(NUM_CLASSES):
+        img = to_heatmap(mask_arr[:, :, i])
+        cv2.imwrite(f'{output_dir}/heat_{i}.png', img)
+        fused = overlay_transparent(input_img, img)
+        cv2.imwrite(f'{output_dir}/fused_{i}.png', fused)

@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.transforms import ToTensor, Normalize, Compose
 from net import UNet11, UNet16
-from utils import now_str, overlay_transparent, to_heatmap
+from utils import now_str, save_report
 
 
 parser = argparse.ArgumentParser()
@@ -55,7 +55,7 @@ def post_process(tensor, dims=None):
     row_sums = np.sum(arr, axis=2)
     return arr / row_sums[:, :, np.newaxis]
 
-def to_standard(arr):
+def arr_to_img(arr):
     COLOR_MAP = np.array([
         [   0,   0,   0,   0], # 0 -> transparent
         [   0,   0,   0, 255], # 1 -> black
@@ -72,13 +72,11 @@ NET = {
     'unet11': UNet11,
     'unet16': UNet16,
 }[NET_NAME.lower()]
-model = NET(num_classes=NUM_CLASSES)
-model = model.to(device)
+model = NET(num_classes=NUM_CLASSES).to(device)
 if WEIGHT_PATH:
     model.load_state_dict(torch.load(WEIGHT_PATH))
 if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
-
 
 input_img = cv2.imread(INPUT_PATH)
 padded_input_img, original_dims = add_padding(input_img)
@@ -95,16 +93,6 @@ with torch.no_grad():
 mask_arr = post_process(output_tensor.data[0].cpu(), original_dims)
 print(f'Finished inference.')
 np.save(f'{output_dir}/out.npy', mask_arr)
-
-cv2.imwrite(f'{output_dir}/org.jpg', input_img)
-mask_img = to_standard(mask_arr)
-cv2.imwrite(f'{output_dir}/out.png', mask_img)
-masked_img = overlay_transparent(input_img, mask_img)
-cv2.imwrite(f'{output_dir}/masked.png', masked_img)
-for i in range(NUM_CLASSES):
-    img = to_heatmap(mask_arr[:, :, i])
-    cv2.imwrite(f'{output_dir}/heat_{i}.png', img)
-    fused = overlay_transparent(input_img, img)
-    cv2.imwrite(f'{output_dir}/fused_{i}.png', fused)
-
+mask_img = arr_to_img(mask_arr)
+save_report(output_dir, input_img, mask_img)
 print(f'Save images.')
