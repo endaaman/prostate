@@ -58,7 +58,7 @@ INDEX_MAP = np.array([
     IDX_GLEASON_5, # 00R: red
     IDX_NORMAL,    # B0R: purple
     IDX_GLEASON_5, # 0GR: yellow
-    IDX_NONE,      # RGB: white
+    IDX_NONE,      # BGR: white
 ])
 NUM_CLASSES = len(np.unique(INDEX_MAP))
 I = np.identity(NUM_CLASSES, dtype=np.float32)
@@ -91,6 +91,7 @@ if STARTING_WEIGHT:
     model.load_state_dict(torch.load(STARTING_WEIGHT))
 if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
+
 
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 criterion = nn.BCELoss()

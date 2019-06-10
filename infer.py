@@ -25,7 +25,7 @@ WEIGHT_PATH = args.weight
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and not args.single_gpu
 NET_NAME = args.net
-NUM_CLASSES = 3
+NUM_CLASSES = 5
 mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
 print(f'Preparing NET:{NET_NAME} GPU:{USE_GPU} MODE: {mode} NUM_CLASSES:{NUM_CLASSES} ({now_str()})')
 
@@ -62,6 +62,8 @@ def to_standard(arr):
         [   0,   0,   0,   0], # 0 -> transparent
         [   0,   0,   0, 255], # 1 -> black
         [ 255,   0,   0, 255], # 2 -> blue
+        [   0, 255,   0, 255], # 3 -> green
+        [   0,   0, 255, 255], # 4 -> red
     ], dtype='uint8')
     arr = np.argmax(arr, axis=2)
     return COLOR_MAP[arr]

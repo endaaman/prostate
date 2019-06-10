@@ -8,7 +8,7 @@ if len(sys.argv) < 4:
     print('Invalid arguments.')
     exit(1)
 
-OUTPUT_DIR = 'train'
+OUTPUT_DIR = 'out'
 
 DIR_NAME = sys.argv[1]
 TILE_SIZE= int(sys.argv[2])
@@ -31,7 +31,7 @@ for x in range(0, X):
         y_start = int(y * TILE_SIZE)
         i = img.crop((x_start, y_start, x_start + TILE_SIZE, y_start + TILE_SIZE))
         ext = 'jpg' if img.mode == 'RGB' else 'png'
-        i.save(f'{DST_DIR}/{x}_{y}.{ext}', quality=100, optimize=True)
+        i.save(f'{DST_DIR}/{DIR_NAME}_{x}_{y}.{ext}', quality=100, optimize=True)
         i.close()
     print(f'column {x}: done')
     gc.collect()
