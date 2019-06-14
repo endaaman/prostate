@@ -58,6 +58,7 @@ class UNet11(nn.Module):
     def __init__(self, num_classes, upsample=False):
         super().__init__()
         self.num_classes = num_classes
+        self.softmax = nn.Softmax2d()
         e = models.vgg11_bn(pretrained=True).features
         ks = 2 if not upsample else None
         self.pool = nn.MaxPool2d(2, 2)
@@ -88,7 +89,8 @@ class UNet11(nn.Module):
         dec2 = self.dec2(torch.cat([dec3, conv2], 1))
         dec1 = self.dec1(torch.cat([dec2, conv1], 1))
         x_out = self.final(dec1)
-        return torch.sigmoid(x_out)
+        # return torch.sigmoid(x_out)
+        return self.softmax(x_out)
 
 
 class UNet16(nn.Module):
@@ -124,7 +126,9 @@ class UNet16(nn.Module):
         dec2 = self.dec2(torch.cat([dec3, conv2], 1))
         dec1 = self.dec1(torch.cat([dec2, conv1], 1))
         x_out = self.final(dec1)
-        return torch.sigmoid(x_out)
+        # return torch.sigmoid(x_out)
+        return self.softmax(x_out)
+
 
 DefaultNet = UNet11
 if __name__ == '__main__':

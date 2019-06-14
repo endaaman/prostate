@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.transforms import ToTensor, Normalize, Compose
 from net import UNet11, UNet16
-from utils import now_str, save_report, curry
+from utils import now_str, curry, to_heatmap, overlay_transparent
 
 
 parser = argparse.ArgumentParser()
@@ -95,7 +95,17 @@ with torch.no_grad():
 
 mask_arr = post_process(output_tensor.data[0].cpu(), original_dims)
 print(f'Finished inference.')
+
 np.save(f'{output_dir}/out.npy', mask_arr)
 mask_img = arr_to_img(mask_arr)
-save_report(output_dir, input_img, mask_img)
+cv2.imwrite(f'{output_dir}/org.jpg', input_img)
+cv2.imwrite(f'{output_dir}/out.png', mask_img)
+masked_img = overlay_transparent(input_img, mask_img)
+cv2.imwrite(f'{output_dir}/masked.png', masked_img)
+for i in range(NUM_CLASSES):
+    img = to_heatmap(mask_arr[:, :, i])
+    cv2.imwrite(f'{output_dir}/heat_{i}.png', img)
+    fused = overlay_transparent(input_img, img)
+    cv2.imwrite(f'{output_dir}/fused_{i}.png', fused)
+
 print(f'Save images.')
