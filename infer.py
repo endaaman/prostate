@@ -8,7 +8,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.transforms import ToTensor, Normalize, Compose
+
 from net import UNet11, UNet16
+from store import Store
 from utils import now_str, curry, to_heatmap, overlay_transparent
 
 
@@ -28,11 +30,6 @@ NET_NAME = args.net.lower()
 NUM_CLASSES = 5
 mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
 print(f'Preparing NET:{NET_NAME} GPU:{USE_GPU} MODE: {mode} NUM_CLASSES:{NUM_CLASSES} ({now_str()})')
-
-
-base_name = os.path.splitext(os.path.basename(INPUT_PATH))[0]
-output_dir = f'./out/{NET_NAME}/{base_name}'
-os.makedirs(output_dir, exist_ok=True)
 
 
 
@@ -67,6 +64,7 @@ def arr_to_img(arr):
     return COLOR_MAP[arr]
 
 device = 'cuda' if USE_GPU else 'cpu'
+store = Store()
 
 NET = {
     'unet11': UNet11,
@@ -77,7 +75,8 @@ NET = {
 model = NET(num_classes=NUM_CLASSES).to(device)
 
 if WEIGHT_PATH:
-    model.load_state_dict(torch.load(WEIGHT_PATH))
+    store.load(WEIGHT_PATH)
+    model.load_state_dict(store.weights)
 if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
 
@@ -96,6 +95,9 @@ with torch.no_grad():
 mask_arr = post_process(output_tensor.data[0].cpu(), original_dims)
 print(f'Finished inference.')
 
+base_name = os.path.splitext(os.path.basename(INPUT_PATH))[0]
+output_dir = f'./out/{NET_NAME}/{base_name}'
+os.makedirs(output_dir, exist_ok=True)
 np.save(f'{output_dir}/out.npy', mask_arr)
 mask_img = arr_to_img(mask_arr)
 cv2.imwrite(f'{output_dir}/org.jpg', input_img)
