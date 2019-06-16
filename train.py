@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
 
-from net import UNet11, UNet16
+from net import UNet11, UNet16, ResUNet
 from data import DefaultDataset
 from store import Store
 from utils import now_str, pp, dice_coef, argmax_acc, curry
@@ -89,6 +89,7 @@ NET = {
         'unet16': UNet16,
         'unet11u': curry(UNet11, upsample=True),
         'unet16u': curry(UNet16, upsample=True),
+        'resunet': ResUNet,
         }[NET_NAME]
 model = NET(num_classes=NUM_CLASSES)
 model = model.to(device)

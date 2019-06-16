@@ -6,9 +6,9 @@ import torchvision
 
 
 class ConvRelu(nn.Module):
-    def __init__(self, in_, out):
+    def __init__(self, in_size, out_size, kernel_size=3):
         super().__init__()
-        self.conv = nn.Conv2d(in_, out, 3, padding=1)
+        self.conv = nn.Conv2d(in_size, out_size, kernel_size, padding=kernel_size//2)
         self.activation = nn.ReLU(inplace=True)
 
     def forward(self, x):
@@ -19,7 +19,7 @@ class ConvRelu(nn.Module):
 
 class Interpolate(nn.Module):
     def __init__(self, size=None, scale_factor=None, mode='nearest', align_corners=False):
-        super(Interpolate, self).__init__()
+        super().__init__()
         self.interp = nn.functional.interpolate
         self.size = size
         self.mode = mode
@@ -33,20 +33,20 @@ class Interpolate(nn.Module):
 
 
 class DecoderBlock(nn.Module):
-    def __init__(self, in_, mid, out, kernel_size=None):
-        super(DecoderBlock, self).__init__()
+    def __init__(self, in_size, mid_size, out_size, kernel_size=None):
+        super().__init__()
         if kernel_size:
             modules = [
-                ConvRelu(in_, mid),
-                nn.ConvTranspose2d(mid, out, kernel_size=kernel_size, stride=2, padding=kernel_size//2-1),
+                ConvRelu(in_size, mid_size),
+                nn.ConvTranspose2d(mid_size, out_size, kernel_size=kernel_size, stride=2, padding=kernel_size//2-1),
             ]
         else:
             modules = [
                 Interpolate(scale_factor=2, mode='bilinear'),
-                ConvRelu(in_, mid),
-                nn.Conv2d(mid, out, 3, padding=1),
+                ConvRelu(in_size, mid_size),
+                nn.Conv2d(mid_size, out_size, 3, padding=1),
             ]
-        modules.append(nn.BatchNorm2d(out))
+        modules.append(nn.BatchNorm2d(out_size))
         modules.append(nn.ReLU(inplace=True))
         self.block = nn.Sequential(*modules)
 
@@ -58,7 +58,6 @@ class UNet11(nn.Module):
     def __init__(self, num_classes, upsample=False):
         super().__init__()
         self.num_classes = num_classes
-        self.softmax = nn.Softmax2d()
         e = models.vgg11_bn(pretrained=True).features
         ks = 2 if not upsample else None
         self.pool = nn.MaxPool2d(2, 2)
@@ -75,6 +74,7 @@ class UNet11(nn.Module):
         self.dec2 = DecoderBlock(192, 128, 32, ks)
         self.dec1 = ConvRelu(96, 32)
         self.final = nn.Conv2d(32, num_classes, kernel_size=1)
+        self.softmax = nn.Softmax2d()
 
     def forward(self, x):
         conv1 = self.conv1(x)
@@ -112,6 +112,7 @@ class UNet16(nn.Module):
         self.dec2 = DecoderBlock(192, 128, 32, 2)
         self.dec1 = ConvRelu(96, 32)
         self.final = nn.Conv2d(32, num_classes, kernel_size=1)
+        self.softmax = nn.Softmax2d()
 
     def forward(self, x):
         conv1 = self.conv1(x)
@@ -130,10 +131,88 @@ class UNet16(nn.Module):
         return self.softmax(x_out)
 
 
-DefaultNet = UNet11
+class DecoderBlock2(nn.Module):
+    def __init__(self, in_size, out_size, mid_size=None):
+        super().__init__()
+        mid_size = mid_size or in_size
+        self.block = nn.Sequential(
+                Interpolate(scale_factor=2, mode='bilinear'),
+                ConvRelu(in_size, mid_size),
+                ConvRelu(mid_size, out_size))
+
+    def forward(self, x):
+        return self.block(x)
+
+
+class FeaturePyramidBlock(nn.Module):
+    def __init__(self, in_size, scale):
+        super().__init__()
+        self.block = nn.Sequential(
+                ConvRelu(in_size, 64),
+                Interpolate(scale_factor=scale, mode='bilinear'))
+
+    def forward(self, x):
+        return self.block(x)
+
+
+class ResUNet(nn.Module):
+    def __init__(self, num_classes):
+        super().__init__()
+        self.num_classes = num_classes
+        base = models.resnet34(pretrained=True)
+        self.conv1 = base.conv1
+        self.bn1 = base.bn1
+        self.relu = base.relu
+        self.maxpool = base.maxpool
+        self.dropout = nn.Dropout2d()
+        self.enc1 = base.layer1
+        self.enc2 = base.layer2
+        self.enc3 = base.layer3
+        self.enc4 = base.layer4
+        self.dec1 = DecoderBlock2(512, 256)
+        self.dec2 = DecoderBlock2(512, 128, 256)
+        self.dec3 = DecoderBlock2(256, 64, 128)
+        self.dec4 = DecoderBlock2(128, 64)
+        self.fpn1 = FeaturePyramidBlock(64, 1)
+        self.fpn2 = FeaturePyramidBlock(128, 2)
+        self.fpn3 = FeaturePyramidBlock(256, 4)
+        self.fpn4 = FeaturePyramidBlock(512, 8)
+        self.final = nn.Sequential(
+                DecoderBlock2(256, 32, 128),
+                ConvRelu(32, 32),
+                ConvRelu(32, num_classes, 1),
+                )
+        self.softmax = nn.Softmax2d()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        e1 = self.enc1(x)
+        e2 = self.enc2(e1)
+        e3 = self.enc3(e2)
+        e4 = self.enc4(e3)
+        center = self.dec1(e4)
+        d1 = torch.cat([center, e3], 1)
+        d2 = torch.cat([self.dec2(d1), e2], 1)
+        d3 = torch.cat([self.dec3(d2), e1], 1)
+        d4 = self.dec4(d3)
+        p1 = self.fpn1(d4)
+        p2 = self.fpn2(d3)
+        p3 = self.fpn3(d2)
+        p4 = self.fpn4(d1)
+        y = torch.cat([p1, p2, p3, p4], 1)
+        y = F.dropout2d(y, 0.5, training=self.training)
+        y = self.final(y)
+        return self.softmax(y)
+
+
+DefaultNet = UNet16
 if __name__ == '__main__':
     input_tensor = torch.rand(1, 3, 224, 224)
-    model = DefaultNet(num_classes=4)
+    model = DefaultNet(num_classes=5)
+    print('params count: {:,}'.format(sum(p.numel() for p in model.parameters())))
     with torch.no_grad():
         output_tensor = model(input_tensor)
         print(output_tensor.size())
