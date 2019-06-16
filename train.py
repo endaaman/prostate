@@ -12,6 +12,7 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 
 from net import UNet11, UNet16
 from data import DefaultDataset
+from store import Store
 from utils import now_str, pp, dice_coef, argmax_acc, curry
 
 IDX_NONE, IDX_NORMAL, IDX_GLEASON_3, IDX_GLEASON_4, IDX_GLEASON_5 = range(5)
@@ -41,13 +42,17 @@ mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
 
 print(f'Preparing NET:{NET_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE: {mode} ({now_str()})')
 
+store = Store()
 first_epoch = 1
+weights = None
+epoch = None
 if STARTING_WEIGHT:
     num = os.path.splitext(os.path.basename(STARTING_WEIGHT))[0]
     if not num.isdigit():
         print(f'Invalid pt file')
         exit(1)
     first_epoch = int(num) + 1
+    store.load(STARTING_WEIGHT)
 
 INDEX_MAP = np.array([
     IDX_NONE,      # empty
@@ -70,25 +75,25 @@ def transform_y(arr):
     return ToTensor()(I[INDEX_MAP[arr]])
 
 data_set = DefaultDataset(
-    transform_x = Compose([
-        ToTensor(),
-        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ]),
-    transform_y = transform_y,
-    tile_size=TILE_SIZE)
+        transform_x = Compose([
+            ToTensor(),
+            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ]),
+        transform_y = transform_y,
+        tile_size=TILE_SIZE)
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
 device = 'cuda' if USE_GPU else 'cpu'
 NET = {
-    'unet11': UNet11,
-    'unet16': UNet16,
-    'unet11u': curry(UNet11, upsample=True),
-    'unet16u': curry(UNet16, upsample=True),
-}[NET_NAME]
+        'unet11': UNet11,
+        'unet16': UNet16,
+        'unet11u': curry(UNet11, upsample=True),
+        'unet16u': curry(UNet16, upsample=True),
+        }[NET_NAME]
 model = NET(num_classes=NUM_CLASSES)
 model = model.to(device)
-if STARTING_WEIGHT:
-    model.load_state_dict(torch.load(STARTING_WEIGHT))
+if store.weights:
+    model.load_state_dict(store.weights)
 if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
 
@@ -98,31 +103,36 @@ criterion = nn.BCELoss()
 
 print(f'Starting ({now_str()})')
 epoch = first_epoch
+iter_count = len(data_set) // BATCH_SIZE
 weight_dir = f'./weights/{NET_NAME}'
-os.makedirs(weight_dir, exist_ok=True)
 while epoch < first_epoch + EPOCH_COUNT:
-    message = None
-    dice_accs = []
-    accs = []
+    iter_dices = []
+    iter_ious = []
+    iter_losses = []
     for i, (inputs, labels) in enumerate(data_loader):
         inputs = inputs.to(device)
         labels = labels.to(device)
         optimizer.zero_grad()
         outputs = model(inputs).to(device)
         loss = criterion(outputs, labels)
-        dice_acc = dice_coef(outputs, labels)
-        dice_accs.append(dice_acc)
-        acc = argmax_acc(outputs, labels)
-        accs.append(acc)
+        dice = dice_coef(outputs, labels)
+        iou = argmax_acc(outputs, labels)
+        iter_losses.append(loss.item())
+        iter_dices.append(dice.item())
+        iter_ious.append(iou.item())
         loss.backward()
         optimizer.step()
-        pp(f'epoch[{epoch}]: {i+1} / {len(data_set) // BATCH_SIZE} dice: {dice_acc:.5f} iou: {acc:.5f} loss: {loss:.5f} ({now_str()})')
+        pp(f'epoch[{epoch}]: {i+1} / {iter_count} dice: {dice:.4f} iou: {iou:.4f} loss: {loss:.4f} ({now_str()})')
     print('')
-    print(f'epoch[{epoch}]: Done. dice:{np.average(dice_accs):.5f} iou:{np.average(accs):.5f} ({now_str()})')
-
+    epoch_loss = np.average(iter_losses)
+    epoch_dice = np.average(iter_dices)
+    epoch_iou = np.average(iter_ious)
+    print(f'epoch[{epoch}]: Done. dice:{epoch_dice:.4f} iou:{epoch_iou:.4f} loss:{epoch_loss:.4f} ({now_str()})')
+    os.makedirs(weight_dir, exist_ok=True)
     weight_path = f'./{weight_dir}/{epoch}.pt'
-    state = model.module.cpu().state_dict() if USE_MULTI_GPU else model.cpu().state_dict()
-    torch.save(state, weight_path)
+    weights = model.module.cpu().state_dict() if USE_MULTI_GPU else model.cpu().state_dict()
+    store.append_params(weights, loss=epoch_loss, dice=epoch_dice, iou=epoch_iou)
+    store.save(weight_path)
     print(f'save weights to {weight_path}')
     model = model.to(device)
     epoch += 1
