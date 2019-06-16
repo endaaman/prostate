@@ -1,4 +1,6 @@
+import argparse
 import torch
+import matplotlib.pyplot as plt
 
 KEY_WEIGHTS = 'weights'
 KEY_LOSSES = 'losses'
@@ -35,3 +37,20 @@ class Store():
             KEY_DICES: self.dices,
             KEY_IOUS: self.ious,
             }, path)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('path')
+    args = parser.parse_args()
+
+    PATH = args.path
+
+    store = Store()
+    store.load(PATH)
+    plt.plot(store.losses, label='loss')
+    plt.plot(store.dices, label='dice index')
+    plt.plot(store.ious, label='IoU')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
