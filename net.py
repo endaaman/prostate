@@ -18,18 +18,19 @@ class ConvRelu(nn.Module):
 
 
 class Interpolate(nn.Module):
-    def __init__(self, size=None, scale_factor=None, mode='nearest', align_corners=False):
+    def __init__(self, size=None, scale_factor=None, mode='nearest', align_corners=None):
         super().__init__()
         self.interp = nn.functional.interpolate
         self.size = size
         self.mode = mode
         self.scale_factor = scale_factor
-        self.align_corners = align_corners
+        self.align_corners = False if mode == 'bilinear' else align_corners
 
     def forward(self, x):
         x = self.interp(x, size=self.size, scale_factor=self.scale_factor,
-                        mode=self.mode, align_corners=self.align_corners)
+                mode=self.mode, align_corners=self.align_corners)
         return x
+
 
 
 class DecoderBlock(nn.Module):
@@ -37,17 +38,19 @@ class DecoderBlock(nn.Module):
         super().__init__()
         if kernel_size:
             modules = [
-                ConvRelu(in_size, mid_size),
-                nn.ConvTranspose2d(mid_size, out_size, kernel_size=kernel_size, stride=2, padding=kernel_size//2-1),
-            ]
+                    ConvRelu(in_size, mid_size),
+                    nn.ConvTranspose2d(mid_size, out_size, kernel_size=kernel_size, stride=2, padding=kernel_size//2-1),
+                    ]
         else:
             modules = [
-                Interpolate(scale_factor=2, mode='bilinear'),
-                ConvRelu(in_size, mid_size),
-                nn.Conv2d(mid_size, out_size, 3, padding=1),
-            ]
-        modules.append(nn.BatchNorm2d(out_size))
-        modules.append(nn.ReLU(inplace=True))
+                    Interpolate(scale_factor=2, mode='bilinear'),
+                    ConvRelu(in_size, mid_size),
+                    nn.Conv2d(mid_size, out_size, 3, padding=1),
+                    ]
+        modules += [
+                nn.BatchNorm2d(out_size),
+                nn.ReLU(inplace=True)
+                ]
         self.block = nn.Sequential(*modules)
 
     def forward(self, x):
@@ -88,9 +91,9 @@ class UNet11(nn.Module):
         dec3 = self.dec3(torch.cat([dec4, conv3], 1))
         dec2 = self.dec2(torch.cat([dec3, conv2], 1))
         dec1 = self.dec1(torch.cat([dec2, conv1], 1))
-        x_out = self.final(dec1)
+        out = self.final(dec1)
         # return torch.sigmoid(x_out)
-        return self.softmax(x_out)
+        return self.softmax(out)
 
 
 class UNet16(nn.Module):
@@ -126,19 +129,20 @@ class UNet16(nn.Module):
         dec3 = self.dec3(torch.cat([dec4, conv3], 1))
         dec2 = self.dec2(torch.cat([dec3, conv2], 1))
         dec1 = self.dec1(torch.cat([dec2, conv1], 1))
-        x_out = self.final(dec1)
-        # return torch.sigmoid(x_out)
-        return self.softmax(x_out)
+        out = self.final(dec1)
+        # return torch.sigmoid(out)
+        return self.softmax(out)
 
 
 class DecoderBlock2(nn.Module):
-    def __init__(self, in_size, out_size, mid_size=None):
+    def __init__(self, in_size, mid_size, out_size):
         super().__init__()
-        mid_size = mid_size or in_size
         self.block = nn.Sequential(
-                Interpolate(scale_factor=2, mode='bilinear'),
+                Interpolate(scale_factor=2),
                 ConvRelu(in_size, mid_size),
-                ConvRelu(mid_size, out_size))
+                nn.BatchNorm2d(mid_size),
+                ConvRelu(mid_size, out_size),
+                nn.BatchNorm2d(out_size))
 
     def forward(self, x):
         return self.block(x)
@@ -148,14 +152,14 @@ class FeaturePyramidBlock(nn.Module):
     def __init__(self, in_size, scale):
         super().__init__()
         self.block = nn.Sequential(
-                ConvRelu(in_size, 64),
-                Interpolate(scale_factor=scale, mode='bilinear'))
+                nn.Conv2d(in_size, 64, 3, padding=1),
+                Interpolate(scale_factor=scale))
 
     def forward(self, x):
         return self.block(x)
 
 
-class ResUNet(nn.Module):
+class UResNet(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
         self.num_classes = num_classes
@@ -164,24 +168,22 @@ class ResUNet(nn.Module):
         self.bn1 = base.bn1
         self.relu = base.relu
         self.maxpool = base.maxpool
-        self.dropout = nn.Dropout2d()
         self.enc1 = base.layer1
         self.enc2 = base.layer2
         self.enc3 = base.layer3
         self.enc4 = base.layer4
-        self.dec1 = DecoderBlock2(512, 256)
-        self.dec2 = DecoderBlock2(512, 128, 256)
-        self.dec3 = DecoderBlock2(256, 64, 128)
-        self.dec4 = DecoderBlock2(128, 64)
+        self.dec1 = DecoderBlock2(512, 256, 256)
+        self.dec2 = DecoderBlock2(512, 128, 128)
+        self.dec3 = DecoderBlock2(256, 64, 64)
+        self.dec4 = DecoderBlock2(128, 64, 64)
         self.fpn1 = FeaturePyramidBlock(64, 1)
         self.fpn2 = FeaturePyramidBlock(128, 2)
         self.fpn3 = FeaturePyramidBlock(256, 4)
         self.fpn4 = FeaturePyramidBlock(512, 8)
         self.final = nn.Sequential(
-                DecoderBlock2(256, 32, 128),
+                DecoderBlock2(256, 64, 32),
                 ConvRelu(32, 32),
-                ConvRelu(32, num_classes, 1),
-                )
+                ConvRelu(32, num_classes, kernel_size=1))
         self.softmax = nn.Softmax2d()
 
     def forward(self, x):
@@ -193,8 +195,7 @@ class ResUNet(nn.Module):
         e2 = self.enc2(e1)
         e3 = self.enc3(e2)
         e4 = self.enc4(e3)
-        center = self.dec1(e4)
-        d1 = torch.cat([center, e3], 1)
+        d1 = torch.cat([self.dec1(e4), e3], 1)
         d2 = torch.cat([self.dec2(d1), e2], 1)
         d3 = torch.cat([self.dec3(d2), e1], 1)
         d4 = self.dec4(d3)
@@ -202,13 +203,13 @@ class ResUNet(nn.Module):
         p2 = self.fpn2(d3)
         p3 = self.fpn3(d2)
         p4 = self.fpn4(d1)
-        y = torch.cat([p1, p2, p3, p4], 1)
-        y = F.dropout2d(y, 0.5, training=self.training)
-        y = self.final(y)
-        return self.softmax(y)
+        out = torch.cat([p1, p2, p3, p4], 1)
+        out = F.dropout2d(out, 0.3, training=self.training)
+        out = self.final(out)
+        return self.softmax(out)
 
 
-DefaultNet = UNet16
+DefaultNet = UResNet
 if __name__ == '__main__':
     input_tensor = torch.rand(1, 3, 224, 224)
     model = DefaultNet(num_classes=5)
