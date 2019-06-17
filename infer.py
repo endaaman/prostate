@@ -71,7 +71,7 @@ NET = {
     'unet16': UNet16,
     'unet11u': curry(UNet11, upsample=True),
     'unet16u': curry(UNet16, upsample=True),
-    'resunet': UResNet,
+    'uresnet': UResNet,
 }[NET_NAME]
 model = NET(num_classes=NUM_CLASSES).to(device)
 
