@@ -100,6 +100,8 @@ if USE_MULTI_GPU:
 
 
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+scheduler = LambdaLR(optimizer, lr_lambda = lambda epoch: 0.01 / math.sqrt(epoch))
+
 criterion = nn.BCELoss()
 
 print(f'Starting ({now_str()})')
@@ -122,7 +124,8 @@ while epoch < first_epoch + EPOCH_COUNT:
         iter_dices.append(dice)
         iter_ious.append(iou)
         loss.backward()
-        optimizer.step()
+        # optimizer.step()
+        scheduler.step()
         pp(f'epoch[{epoch}]: {i+1} / {iter_count} dice: {dice:.4f} iou: {iou:.4f} loss: {loss:.4f} ({now_str()})')
     print('')
     epoch_loss = np.average(iter_losses)
