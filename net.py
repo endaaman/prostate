@@ -211,7 +211,7 @@ class UResNet(nn.Module):
 
 DefaultNet = UResNet
 if __name__ == '__main__':
-    input_tensor = torch.rand(1, 3, 224, 224)
+    input_tensor = torch.rand(1, 3, 384, 384)
     model = DefaultNet(num_classes=5)
     print('params count: {:,}'.format(sum(p.numel() for p in model.parameters())))
     with torch.no_grad():

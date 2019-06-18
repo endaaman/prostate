@@ -1,10 +1,12 @@
 import os
+import math
 import argparse
 from enum import Enum, auto
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import LambdaLR
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import datasets, models
@@ -45,7 +47,6 @@ print(f'Preparing NET:{NET_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MOD
 store = Store()
 first_epoch = 1
 weights = None
-epoch = None
 if STARTING_WEIGHT:
     num = os.path.splitext(os.path.basename(STARTING_WEIGHT))[0]
     if not num.isdigit():
@@ -53,6 +54,7 @@ if STARTING_WEIGHT:
         exit(1)
     first_epoch = int(num) + 1
     store.load(STARTING_WEIGHT)
+epoch = first_epoch
 
 INDEX_MAP = np.array([
     IDX_NONE,      # empty
@@ -99,13 +101,11 @@ if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
 
 
-optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-scheduler = LambdaLR(optimizer, lr_lambda = lambda epoch: 0.01 / math.sqrt(epoch))
-
+optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+# scheduler = LambdaLR(optimizer, last_epoch=epoch, lr_lambda=lambda step: 1 / step ** 0.1)
 criterion = nn.BCELoss()
 
 print(f'Starting ({now_str()})')
-epoch = first_epoch
 iter_count = len(data_set) // BATCH_SIZE
 weight_dir = f'./weights/{NET_NAME}'
 while epoch < first_epoch + EPOCH_COUNT:
@@ -124,8 +124,8 @@ while epoch < first_epoch + EPOCH_COUNT:
         iter_dices.append(dice)
         iter_ious.append(iou)
         loss.backward()
-        # optimizer.step()
-        scheduler.step()
+        optimizer.step()
+        # scheduler.step()
         pp(f'epoch[{epoch}]: {i+1} / {iter_count} dice: {dice:.4f} iou: {iou:.4f} loss: {loss:.4f} ({now_str()})')
     print('')
     epoch_loss = np.average(iter_losses)
