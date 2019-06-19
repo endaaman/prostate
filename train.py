@@ -12,10 +12,10 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
 
-from net import UNet11, UNet16, UResNet
+from net import UNet11, UNet16, UNet11u, UNet16u, UResNet
 from data import DefaultDataset
 from store import Store
-from utils import now_str, pp, dice_coef, argmax_acc, curry
+from utils import now_str, pp, dice_coef, argmax_acc
 
 IDX_NONE, IDX_NORMAL, IDX_GLEASON_3, IDX_GLEASON_4, IDX_GLEASON_5 = range(5)
 
@@ -88,9 +88,7 @@ data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_work
 device = 'cuda' if USE_GPU else 'cpu'
 NET = {
         'unet11': UNet11,
-        'unet16': UNet16,
-        'unet11u': curry(UNet11, upsample=True),
-        'unet16u': curry(UNet16, upsample=True),
+        'unet11u': UNet11u,
         'uresnet': UResNet,
         }[NET_NAME]
 model = NET(num_classes=NUM_CLASSES)
