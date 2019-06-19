@@ -40,7 +40,7 @@ TILE_SIZE = args.tile
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and not args.single_gpu
 NET_NAME = args.net.lower()
-mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
+mode = ('multi' if USE_MULTI_GPU and torch.cuda.device_count() > 1 else 'single') if USE_GPU else 'cpu'
 
 print(f'Preparing NET:{NET_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE: {mode} ({now_str()})')
 
