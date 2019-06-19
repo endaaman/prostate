@@ -11,7 +11,7 @@ KEY_IOUS = 'ious'
 class Store():
     def __init__(self):
         self.weights = None
-        self.optims = None
+        self.optim_state = None
         self.losses = []
         self.dices = []
         self.ious = []

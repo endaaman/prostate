@@ -100,15 +100,17 @@ if store.weights:
 if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
 
-
-inflection = len(data_set) * 20
-def lr_func(step):
+inflection = 100
+def lr_func_linear(step):
     return max(1 - step * 0.9 / inflection, 0.1)
+
+def lr_func_exp(step):
+    return 0.95 ** step
 
 optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 if store.optim_state:
     optimizer.load_state_dict(store.optim_state)
-scheduler = LambdaLR(optimizer, lr_lambda=lr_func, last_epoch=epoch if store.optim_state else -1)
+scheduler = LambdaLR(optimizer, lr_lambda=lr_func_exp, last_epoch=epoch if store.optim_state else -1)
 criterion = nn.BCELoss()
 
 print(f'Starting ({now_str()})')
@@ -118,6 +120,7 @@ while epoch < first_epoch + EPOCH_COUNT:
     iter_dices = []
     iter_ious = []
     iter_losses = []
+    lr = scheduler.get_lr()[0]
     for i, (inputs, labels) in enumerate(data_loader):
         inputs = inputs.to(device)
         labels = labels.to(device)
@@ -131,8 +134,7 @@ while epoch < first_epoch + EPOCH_COUNT:
         iter_ious.append(iou)
         loss.backward()
         optimizer.step()
-        # scheduler.step()
-        pp(f'epoch[{epoch}]: {i+1} / {iter_count} dice: {dice:.4f} iou: {iou:.4f} loss: {loss:.4f} ({now_str()})')
+        pp(f'epoch[{epoch}]: {i+1} / {iter_count} dice: {dice:.4f} iou: {iou:.4f} loss: {loss:.4f} lr: {lr:.4f} ({now_str()})')
     print('')
     epoch_loss = np.average(iter_losses)
     epoch_dice = np.average(iter_dices)
@@ -145,6 +147,7 @@ while epoch < first_epoch + EPOCH_COUNT:
     store.save(weight_path)
     print(f'save weights to {weight_path}')
     model = model.to(device)
+    scheduler.step()
     epoch += 1
 
 print(f'Finished training')

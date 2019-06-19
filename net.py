@@ -92,7 +92,7 @@ class UNet11(nn.Module):
         dec2 = self.dec2(torch.cat([dec3, conv2], 1))
         dec1 = self.dec1(torch.cat([dec2, conv1], 1))
         out = self.final(dec1)
-        # return torch.sigmoid(x_out)
+        # return torch.sigmoid(out)
         return self.softmax(out)
 
 
@@ -207,6 +207,7 @@ class UResNet(nn.Module):
         out = F.dropout2d(out, 0.3, training=self.training)
         out = self.final(out)
         return self.softmax(out)
+        # return torch.sigmoid(out)
 
 
 DefaultNet = UResNet
