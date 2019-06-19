@@ -101,8 +101,14 @@ if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
 
 
+inflection = len(data_set) * 20
+def lr_func(step):
+    return max(1 - step * 0.9 / inflection, 0.1)
+
 optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-# scheduler = LambdaLR(optimizer, last_epoch=epoch, lr_lambda=lambda step: 1 / step ** 0.1)
+if store.optim_state:
+    optimizer.load_state_dict(store.optim_state)
+scheduler = LambdaLR(optimizer, lr_lambda=lr_func, last_epoch=epoch if store.optim_state else -1)
 criterion = nn.BCELoss()
 
 print(f'Starting ({now_str()})')
@@ -135,7 +141,7 @@ while epoch < first_epoch + EPOCH_COUNT:
     os.makedirs(weight_dir, exist_ok=True)
     weight_path = f'./{weight_dir}/{epoch}.pt'
     weights = model.module.cpu().state_dict() if USE_MULTI_GPU else model.cpu().state_dict()
-    store.append_params(weights, loss=epoch_loss, dice=epoch_dice, iou=epoch_iou)
+    store.append_params(weights, optimizer.state_dict(), loss=epoch_loss, dice=epoch_dice, iou=epoch_iou)
     store.save(weight_path)
     print(f'save weights to {weight_path}')
     model = model.to(device)
