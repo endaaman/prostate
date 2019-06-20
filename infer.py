@@ -90,7 +90,7 @@ mask_arr = post_process(output_tensor.data[0].cpu(), original_dims)
 print(f'Finished inference.')
 
 base_name = os.path.splitext(os.path.basename(INPUT_PATH))[0]
-output_dir = f'./out/{NET_NAME}/{base_name}'
+output_dir = f'./out/{MODEL_NAME}/{base_name}'
 os.makedirs(output_dir, exist_ok=True)
 np.save(f'{output_dir}/out.npy', mask_arr)
 mask_img = arr_to_img(mask_arr)

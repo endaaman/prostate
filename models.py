@@ -11,6 +11,9 @@ from utils import curry
 def pack(arr):
     return [x for x in arr if x]
 
+# activation = nn.LogSoftmax(dim=1)
+# activation = nn.Softmax2d()
+activation = torch.sigmoid
 
 class ConvRelu(nn.Module):
     def __init__(self, in_size, out_size, kernel_size=3):
@@ -101,7 +104,6 @@ class UNet11(nn.Module):
         self.dec5 = decoder(192, 128, 32)
         self.dec6 = ConvRelu(96, 32)
         self.final = nn.Conv2d(32, num_classes, kernel_size=1)
-        self.softmax = nn.Softmax2d()
 
     def forward(self, x):
         e1 = self.conv1(x)
@@ -117,8 +119,7 @@ class UNet11(nn.Module):
         d1 = self.dec5(torch.cat([d2, e2], 1))
         out = self.dec6(torch.cat([d1, e1], 1))
         out = self.final(out)
-        # return torch.sigmoid(out)
-        return self.softmax(out)
+        return activation(out)
 
 
 class UNet11b(UNet11):
@@ -150,7 +151,6 @@ class UNet16(nn.Module):
         self.dec2 = decoder(192, 128, 32)
         self.dec1 = ConvRelu(96, 32)
         self.final = nn.Conv2d(32, num_classes, kernel_size=1)
-        self.softmax = nn.Softmax2d()
 
     def forward(self, x):
         conv1 = self.conv1(x)
@@ -165,8 +165,7 @@ class UNet16(nn.Module):
         dec2 = self.dec2(torch.cat([dec3, conv2], 1))
         dec1 = self.dec1(torch.cat([dec2, conv1], 1))
         out = self.final(dec1)
-        # return torch.sigmoid(out)
-        return self.softmax(out)
+        return activation(out)
 
 
 class UNet16b(UNet16):
@@ -199,7 +198,6 @@ class AlbuNet(nn.Module):
                 decoder(128, 128, 32),
                 ConvRelu(32, 32),
                 nn.Conv2d(32, num_classes, kernel_size=1))
-        self.softmax = nn.Softmax2d()
 
     def forward(self, x):
         e1 = self.first(x)
@@ -213,7 +211,7 @@ class AlbuNet(nn.Module):
         d4 = self.dec4(torch.cat([d3, e3], 1))
         d5 = self.dec5(torch.cat([d4, e2], 1))
         out = self.final(d5)
-        return self.softmax(out)
+        return activation(out)
 
 
 class AlbuNet_b(AlbuNet):
@@ -258,7 +256,6 @@ class UResNet(nn.Module):
                 UpsampleDecoder(256, 64, 32),
                 ConvRelu(32, 32),
                 ConvRelu(32, num_classes, kernel_size=1))
-        self.softmax = nn.Softmax2d()
 
     def forward(self, x):
         x = self.first(x)
@@ -277,8 +274,7 @@ class UResNet(nn.Module):
         out = torch.cat([p1, p2, p3, p4], 1)
         out = F.dropout2d(out, 0.3, training=self.training)
         out = self.final(out)
-        return self.softmax(out)
-        # return torch.sigmoid(out)
+        return activation(out)
 
 def get_model(name):
     m = {

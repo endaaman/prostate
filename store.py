@@ -63,9 +63,7 @@ if __name__ == '__main__':
                          textcoords="offset points", # how to position the text
                          xytext=(0, offset), # distance from text to points (x,y)
                          ha='center') # horizontal alignment can be left, right or center
-
-    plt.figure(figsize=(len(store.losses)//2, 8))
-    plt.xticks(range(len(store.losses)))
+    plt.figure(figsize=(max(len(store.losses)//1.5, 10), 10))
     plot_line(plt, store.losses, 'loss')
     plot_line(plt, store.dices, 'dice index', offset=-10)
     plot_line(plt, store.ious, 'IoU')

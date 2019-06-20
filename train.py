@@ -86,7 +86,7 @@ data_set = DefaultDataset(
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
 device = 'cuda' if USE_GPU else 'cpu'
-model = get_model(model_name)(num_classes=NUM_CLASSES).to(device)
+model = get_model(MODEL_NAME)(num_classes=NUM_CLASSES).to(device)
 if store.weights:
     model.load_state_dict(store.weights)
 if USE_MULTI_GPU:
