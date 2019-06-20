@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, request, jsonify
 
-from net import UNet11, UNet16
+from models import UNet11, UNet16
 from utils import now_str, overlay_transparent, to_heatmap
 
 

@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
 
-import net as net
+from models import get_model
 from data import DefaultDataset
 from store import Store
 from utils import now_str, pp, dice_coef, argmax_acc
@@ -24,7 +24,7 @@ parser.add_argument('-w', '--weight')
 parser.add_argument('-b', '--batch-size', type=int, default=32)
 parser.add_argument('-e', '--epoch', type=int, default=100)
 parser.add_argument('-t', '--tile', type=int, default=224)
-parser.add_argument('-n', '--net', default='UNet11')
+parser.add_argument('-m', '--model', default='unet11')
 parser.add_argument('--num-workers', type=int, default=4)
 parser.add_argument('--single-gpu', action="store_true")
 # parser.add_argument('--accurated', action="store_true")
@@ -39,10 +39,10 @@ TILE_SIZE = args.tile
 # ACCURATED = args.accurated
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and not args.single_gpu
-NET_NAME = args.net.lower()
+MODEL_NAME = args.model
 mode = ('multi' if USE_MULTI_GPU and torch.cuda.device_count() > 1 else 'single') if USE_GPU else 'cpu'
 
-print(f'Preparing NET:{NET_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE: {mode} ({now_str()})')
+print(f'Preparing MODEL:{MODEL_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE: {mode} ({now_str()})')
 
 store = Store()
 first_epoch = 1
@@ -86,17 +86,7 @@ data_set = DefaultDataset(
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
 device = 'cuda' if USE_GPU else 'cpu'
-NET = {
-        'unet11': net.UNet11,
-        'unet11b': net.UNet11b,
-        'albunet_n': net.AlbuNet_n,
-        'albunet': net.AlbuNet,
-        'albunet_b': net.AlbuNet_b,
-        'albunet_n': net.AlbuNet_n,
-        'uresnet': net.UResNet,
-        }[NET_NAME]
-model = NET(num_classes=NUM_CLASSES)
-model = model.to(device)
+model = get_model(model_name)(num_classes=NUM_CLASSES).to(device)
 if store.weights:
     model.load_state_dict(store.weights)
 if USE_MULTI_GPU:
@@ -117,7 +107,7 @@ criterion = nn.BCELoss()
 
 print(f'Starting ({now_str()})')
 iter_count = len(data_set) // BATCH_SIZE
-weight_dir = f'./weights/{NET_NAME}'
+weight_dir = f'./weights/{MODEL_NAME}'
 while epoch < first_epoch + EPOCH_COUNT:
     iter_dices = []
     iter_ious = []

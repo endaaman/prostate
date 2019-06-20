@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.transforms import ToTensor, Normalize, Compose
 
-from net import UNet11, UNet16, UResNet
+from models import get_model
 from store import Store
 from utils import now_str, curry, to_heatmap, overlay_transparent
 
@@ -17,7 +17,7 @@ from utils import now_str, curry, to_heatmap, overlay_transparent
 parser = argparse.ArgumentParser()
 parser.add_argument('input')
 parser.add_argument('-w', '--weight')
-parser.add_argument('-n', '--net')
+parser.add_argument('-m', '--model')
 parser.add_argument('--single-gpu', action="store_true")
 parser.add_argument('--cpu', action="store_true")
 args = parser.parse_args()
@@ -26,10 +26,10 @@ INPUT_PATH = args.input
 WEIGHT_PATH = args.weight
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and not args.single_gpu
-NET_NAME = args.net.lower()
+MODEL_NAME = args.model
 NUM_CLASSES = 5
 mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
-print(f'Preparing NET:{NET_NAME} GPU:{USE_GPU} MODE: {mode} NUM_CLASSES:{NUM_CLASSES} ({now_str()})')
+print(f'Preparing MODEL:{MODEL_NAME} GPU:{USE_GPU} MODE: {mode} NUM_CLASSES:{NUM_CLASSES} ({now_str()})')
 
 
 
@@ -66,14 +66,7 @@ def arr_to_img(arr):
 device = 'cuda' if USE_GPU else 'cpu'
 store = Store()
 
-NET = {
-    'unet11': UNet11,
-    'unet16': UNet16,
-    'unet11u': curry(UNet11, upsample=True),
-    'unet16u': curry(UNet16, upsample=True),
-    'uresnet': UResNet,
-}[NET_NAME]
-model = NET(num_classes=NUM_CLASSES).to(device)
+model = get_model(MODEL_NAME)(num_classes=NUM_CLASSES).to(device)
 
 if WEIGHT_PATH:
     store.load(WEIGHT_PATH)
