@@ -18,11 +18,11 @@ class Store():
 
     def load(self, path):
         data = torch.load(path)
-        self.weights = data[KEY_WEIGHTS]
-        self.optim_state = data[KEY_OPTIMS]
-        self.losses = data[KEY_LOSSES]
-        self.dices = data[KEY_DICES]
-        self.ious = data[KEY_IOUS]
+        self.weights = data.get(KEY_WEIGHTS)
+        self.optim_state = data.get(KEY_OPTIMS)
+        self.losses = data.get(KEY_LOSSES)
+        self.dices = data.get(KEY_DICES)
+        self.ious = data.get(KEY_IOUS)
 
     def append_params(self, weights, optim_state=None, loss=None, dice=None, iou=None):
         self.weights = weights
@@ -53,6 +53,7 @@ if __name__ == '__main__':
 
     store = Store()
     store.load(PATH)
+    plt.xticks(range(len(store.losses)))
     plt.plot(store.losses, label='loss')
     plt.plot(store.dices, label='dice index')
     plt.plot(store.ious, label='IoU')
