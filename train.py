@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
 
-from net import UNet11, UNet16, UNet11u, UNet16u, UResNet
+import net as net
 from data import DefaultDataset
 from store import Store
 from utils import now_str, pp, dice_coef, argmax_acc
@@ -87,9 +87,13 @@ data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_work
 
 device = 'cuda' if USE_GPU else 'cpu'
 NET = {
-        'unet11': UNet11,
-        'unet11u': UNet11u,
-        'uresnet': UResNet,
+        'unet11': net.UNet11,
+        'unet11b': net.UNet11b,
+        'albunet_n': net.AlbuNet_n,
+        'albunet': net.AlbuNet,
+        'albunet_b': net.AlbuNet_b,
+        'albunet_n': net.AlbuNet_n,
+        'uresnet': net.UResNet,
         }[NET_NAME]
 model = NET(num_classes=NUM_CLASSES)
 model = model.to(device)
