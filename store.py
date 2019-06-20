@@ -20,9 +20,9 @@ class Store():
         data = torch.load(path)
         self.weights = data.get(KEY_WEIGHTS)
         self.optim_state = data.get(KEY_OPTIMS)
-        self.losses = data.get(KEY_LOSSES)
-        self.dices = data.get(KEY_DICES)
-        self.ious = data.get(KEY_IOUS)
+        self.losses = data.get(KEY_LOSSES) or []
+        self.dices = data.get(KEY_DICES) or []
+        self.ious = data.get(KEY_IOUS) or []
 
     def append_params(self, weights, optim_state=None, loss=None, dice=None, iou=None):
         self.weights = weights
