@@ -25,9 +25,8 @@ parser.add_argument('-b', '--batch-size', type=int, default=32)
 parser.add_argument('-e', '--epoch', type=int, default=100)
 parser.add_argument('-t', '--tile', type=int, default=224)
 parser.add_argument('-m', '--model', default='unet11')
+parser.add_argument('-d', '--dest', default='weights')
 parser.add_argument('--num-workers', type=int, default=4)
-parser.add_argument('--single-gpu', action="store_true")
-# parser.add_argument('--accurated', action="store_true")
 parser.add_argument('--cpu', action="store_true")
 args = parser.parse_args()
 
@@ -36,13 +35,19 @@ BATCH_SIZE = args.batch_size
 NUM_WORKERS = args.num_workers
 EPOCH_COUNT = args.epoch
 TILE_SIZE = args.tile
-# ACCURATED = args.accurated
-USE_GPU = not args.cpu and torch.cuda.is_available()
-USE_MULTI_GPU = USE_GPU and not args.single_gpu
 MODEL_NAME = args.model
-mode = ('multi' if USE_MULTI_GPU and torch.cuda.device_count() > 1 else 'single') if USE_GPU else 'cpu'
+DEST_BASE_DIR = args.dest
+USE_GPU = not args.cpu and torch.cuda.is_available()
+USE_MULTI_GPU = USE_GPU and torch.cuda.device_count() > 1
 
+mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
 print(f'Preparing MODEL:{MODEL_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE: {mode} ({now_str()})')
+
+DEST_DIR = os.path.join(DEST_BASE_DIR, MODEL_NAME)
+os.makedirs(DEST_DIR, exist_ok=True)
+if not os.path.isdir(DEST_DIR):
+    print(f'Invalid dest dir: `{DEST_DIR}`')
+    exit(1)
 
 store = Store()
 first_epoch = 1
@@ -107,7 +112,6 @@ criterion = nn.BCELoss()
 
 print(f'Starting ({now_str()})')
 iter_count = len(data_set) // BATCH_SIZE
-weight_dir = f'./weights/{MODEL_NAME}'
 while epoch < first_epoch + EPOCH_COUNT:
     iter_dices = []
     iter_ious = []
@@ -132,8 +136,7 @@ while epoch < first_epoch + EPOCH_COUNT:
     epoch_dice = np.average(iter_dices)
     epoch_iou = np.average(iter_ious)
     print(f'epoch[{epoch}]: Done. dice:{epoch_dice:.4f} iou:{epoch_iou:.4f} loss:{epoch_loss:.4f} ({now_str()})')
-    os.makedirs(weight_dir, exist_ok=True)
-    weight_path = f'./{weight_dir}/{epoch}.pt'
+    weight_path = os.path.join(DEST_DIR, f'{epoch}.pt')
     weights = model.module.cpu().state_dict() if USE_MULTI_GPU else model.cpu().state_dict()
     store.append_params(weights, optimizer.state_dict(), loss=epoch_loss, dice=epoch_dice, iou=epoch_iou)
     store.save(weight_path)

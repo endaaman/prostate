@@ -276,32 +276,52 @@ class UResNet(nn.Module):
         out = self.final(out)
         return activation(out)
 
-def get_model(name):
-    m = {
+MODELS = {
         'unet11': UNet11,
         'unet11b': UNet11b,
         'unet11n': UNet11n,
+        'unet16': UNet16,
+        'unet16b': UNet16b,
+        'unet16n': UNet16n,
         'albunet': AlbuNet,
         'albunet_b': AlbuNet_b,
         'albunet_n': AlbuNet_n,
-        'uresnet': UResNet,
-    }.get(name.lower())
+        'uresnet': UResNet}
+
+def get_model(name):
+    m = MODELS.get(name.lower())
     if not m:
         raise Exception(f'invalid model name: {name}')
     return m
 
+def count_model_params(model):
+    return sum(p.numel() for p in model.parameters())
+
+def validate_model(name, tile_size):
+    m = get_model(name)(num_classes=5)
+    print('{} - params count: {:,}'.format(type(m).__name__, count_model_params(m)))
+    input_tensor = torch.rand(1, 3, tile_size, tile_size)
+    print('in : ', input_tensor.size())
+    with torch.no_grad():
+        output_tensor = m(input_tensor)
+        print('out: ', output_tensor.size())
+
+
+def list_models():
+    for k, M in MODELS.items():
+        m = M(num_classes=5)
+        print('{}: {:,}'.format(M.__name__, count_model_params(m)))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('command', nargs='?')
     parser.add_argument('-m', '--model', type=str, default='unet11')
+    parser.add_argument('--tile', type=int, default=224)
     args = parser.parse_args()
 
-    model = get_model(args.model)(num_classes=5)
-    num_params = sum(p.numel() for p in model.parameters())
-    print('{} - params count: {:,}'.format(type(model).__name__, num_params))
-
-    input_tensor = torch.rand(1, 3, 512, 512)
-    print('in : ', input_tensor.size())
-    with torch.no_grad():
-        output_tensor = model(input_tensor)
-        print('out: ', output_tensor.size())
+    if not args.command:
+        validate_model(args.model, args.tile)
+    elif args.command == 'list':
+        list_models()
+    else:
+        print('invalid subcommand: ', args.command)
