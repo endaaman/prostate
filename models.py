@@ -174,7 +174,7 @@ class UNet16b(UNet16):
 
 class UNet16n(UNet16):
     def __init__(self, num_classes):
-        super().__init__(num_classes, upsample='bilinear')
+        super().__init__(num_classes, upsample='nearest')
 
 
 class AlbuNet(nn.Module):
