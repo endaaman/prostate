@@ -41,7 +41,7 @@ USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and torch.cuda.device_count() > 1
 
 mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
-print(f'Preparing MODEL:{MODEL_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE: {mode} ({now_str()})')
+print(f'Preparing MODEL:{MODEL_NAME} BATCH:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE:{mode} ({now_str()})')
 
 DEST_DIR = os.path.join(DEST_BASE_DIR, MODEL_NAME)
 os.makedirs(DEST_DIR, exist_ok=True)
@@ -145,4 +145,4 @@ while epoch < first_epoch + EPOCH_COUNT:
     scheduler.step()
     epoch += 1
 
-print(f'Finished training')
+print(f'Finished training\n')
