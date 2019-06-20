@@ -53,10 +53,22 @@ if __name__ == '__main__':
 
     store = Store()
     store.load(PATH)
+
+    def plot_line(plt, values, label):
+        plt.plot(values, label=label)
+        for i, value in enumerate(values):
+            text = "{:.2f}".format(value)
+            plt.annotate(text, # this is the text
+                         (i, value), # this is the point to label
+                         textcoords="offset points", # how to position the text
+                         xytext=(0,10), # distance from text to points (x,y)
+                         ha='center') # horizontal alignment can be left, right or center
+
+    plt.figure(figsize=(len(store.losses)//2, 8))
     plt.xticks(range(len(store.losses)))
-    plt.plot(store.losses, label='loss')
-    plt.plot(store.dices, label='dice index')
-    plt.plot(store.ious, label='IoU')
+    plot_line(plt, store.losses, 'loss')
+    plot_line(plt, store.dices, 'dice index')
+    plot_line(plt, store.ious, 'IoU')
     plt.grid(True)
     plt.legend()
     plt.show()
