@@ -17,8 +17,6 @@ from data import DefaultDataset
 from store import Store
 from utils import now_str, pp, dice_coef, argmax_acc
 
-IDX_NONE, IDX_NORMAL, IDX_GLEASON_3, IDX_GLEASON_4, IDX_GLEASON_5 = range(5)
-
 parser = argparse.ArgumentParser()
 parser.add_argument('-w', '--weight')
 parser.add_argument('-b', '--batch-size', type=int, default=32)
@@ -37,21 +35,23 @@ EPOCH_COUNT = args.epoch
 TILE_SIZE = args.tile
 MODEL_NAME = args.model
 DEST_BASE_DIR = args.dest
+
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and torch.cuda.device_count() > 1
-
-mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
-print(f'Preparing MODEL:{MODEL_NAME} BATCH:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE:{mode} ({now_str()})')
-
 DEST_DIR = os.path.join(DEST_BASE_DIR, MODEL_NAME)
+
 os.makedirs(DEST_DIR, exist_ok=True)
 if not os.path.isdir(DEST_DIR):
     print(f'Invalid dest dir: `{DEST_DIR}`')
     exit(1)
 
 store = Store()
+mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
+device = 'cuda' if USE_GPU else 'cpu'
+
+
+# EPOCH
 first_epoch = 1
-weights = None
 if STARTING_WEIGHT:
     num = os.path.splitext(os.path.basename(STARTING_WEIGHT))[0]
     if not num.isdigit():
@@ -61,6 +61,21 @@ if STARTING_WEIGHT:
     store.load(STARTING_WEIGHT)
 epoch = first_epoch
 
+print(f'Preparing MODEL:{MODEL_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE: {mode} ({now_str()})')
+
+
+# MDOEL
+Model = get_model(MODEL_NAME)
+model = Model(num_classes=NUM_CLASSES).to(device)
+store.set_name(Model.__name__)
+if store.weights:
+    model.load_state_dict(store.weights)
+if USE_MULTI_GPU:
+    model = torch.nn.DataParallel(model)
+
+
+# DATA
+IDX_NONE, IDX_NORMAL, IDX_GLEASON_3, IDX_GLEASON_4, IDX_GLEASON_5 = range(5)
 INDEX_MAP = np.array([
     IDX_NONE,      # empty
     IDX_NORMAL,    # 000: black
@@ -90,13 +105,8 @@ data_set = DefaultDataset(
         tile_size=TILE_SIZE)
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
-device = 'cuda' if USE_GPU else 'cpu'
-model = get_model(MODEL_NAME)(num_classes=NUM_CLASSES).to(device)
-if store.weights:
-    model.load_state_dict(store.weights)
-if USE_MULTI_GPU:
-    model = torch.nn.DataParallel(model)
 
+# TRAIN
 inflection = 100
 def lr_func_linear(step):
     return max(1 - step * 0.9 / inflection, 0.1)
@@ -110,6 +120,8 @@ if store.optim_state:
 scheduler = LambdaLR(optimizer, lr_lambda=lr_func_exp, last_epoch=epoch if store.optim_state else -1)
 criterion = nn.BCELoss()
 
+
+# LOOP
 print(f'Starting ({now_str()})')
 iter_count = len(data_set) // BATCH_SIZE
 while epoch < first_epoch + EPOCH_COUNT:
@@ -138,7 +150,8 @@ while epoch < first_epoch + EPOCH_COUNT:
     print(f'epoch[{epoch}]: Done. dice:{epoch_dice:.4f} iou:{epoch_iou:.4f} loss:{epoch_loss:.4f} ({now_str()})')
     weight_path = os.path.join(DEST_DIR, f'{epoch}.pt')
     weights = model.module.cpu().state_dict() if USE_MULTI_GPU else model.cpu().state_dict()
-    store.append_params(weights, optimizer.state_dict(), loss=epoch_loss, dice=epoch_dice, iou=epoch_iou)
+    store.set_states(weights, optimizer.state_dict())
+    store.append_params(loss=epoch_loss, dice=epoch_dice, iou=epoch_iou)
     store.save(weight_path)
     print(f'save weights to {weight_path}')
     model = model.to(device)
