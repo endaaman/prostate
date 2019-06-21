@@ -37,7 +37,7 @@ class Store():
         if optim_state:
             self.optim_state = optim_state
 
-    def append_params(self, weights, optim_state=None, loss=None, dice=None, iou=None):
+    def append_params(self, optim_state=None, loss=None, dice=None, iou=None):
         if loss:
             self.losses.append(loss)
         if dice:

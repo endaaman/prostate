@@ -2,5 +2,6 @@ train/
 inputs/
 tmp/
 out/
-weights/
+
+weights
 tmp.*
