@@ -5,11 +5,8 @@ from torchvision import models
 import torch
 import torchvision
 
-from utils import curry
+from utils import curry, pack
 
-
-def pack(arr):
-    return [x for x in arr if x]
 
 # activation = nn.LogSoftmax(dim=1)
 # activation = nn.Softmax2d()
@@ -60,8 +57,7 @@ class DeconvDecoder(nn.Module):
         self.block = nn.Sequential(*pack([
             ConvRelu(in_size, mid_size),
             nn.BatchNorm2d(mid_size) if bn else None,
-            nn.ConvTranspose2d(mid_size, out_size, stride=2,
-                kernel_size=kernel_size, padding=kernel_size//2-1),
+            nn.ConvTranspose2d(mid_size, out_size, stride=2, kernel_size=kernel_size, padding=kernel_size//2-1),
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(out_size) if bn else None,
             ]))

@@ -7,6 +7,16 @@ import torch
 def now_str():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+def pack(arr):
+    return [x for x in arr if x]
+
+def curry(*args, **kwds):
+    def callit(*moreargs, **morekwds):
+        kw = kwds.copy(  )
+        kw.update(morekwds)
+        return args[0](*(args[1:]+moreargs), **kw)
+    return callit
+
 last_message = None
 def pp(message):
     global last_message
@@ -28,13 +38,6 @@ def argmax_acc(a, b):
     _, a = torch.max(a.permute(0, 2, 3, 1).contiguous().view(-1, num_classes), 1)
     _, b = torch.max(b.permute(0, 2, 3, 1).contiguous().view(-1, num_classes), 1)
     return (a == b).sum().item() / (num_channels // num_classes)
-
-def curry(*args, **kwds):
-    def callit(*moreargs, **morekwds):
-        kw = kwds.copy(  )
-        kw.update(morekwds)
-        return args[0](*(args[1:]+moreargs), **kw)
-    return callit
 
 def to_heatmap(org, base_color=[0, 255, 0]):
     z = np.zeros([*org.shape], dtype=np.uint8)
