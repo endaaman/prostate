@@ -120,8 +120,8 @@ optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 if store.optim_state:
     optimizer.load_state_dict(store.optim_state)
 scheduler = LambdaLR(optimizer, lr_lambda=lr_func_exp, last_epoch=epoch if store.optim_state else -1)
-# criterion = nn.BCELoss()
-criterion = nn.BCEWithLogitsLoss()
+criterion = nn.BCELoss()
+# criterion = nn.BCEWithLogitsLoss()
 
 
 # LOOP
