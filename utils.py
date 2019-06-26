@@ -26,18 +26,41 @@ def pp(message):
     sys.stdout.write(message)
     sys.stdout.flush()
 
-def dice_coef(a, b, smooth = 1.):
+def revert_onehot(t):
+    t = t.permute(0, 2, 3, 1)
+    num_classes = t.size(-1)
+    _, img = torch.max(t.contiguous().view(-1, num_classes), 1)
+    return img
+
+def similarity_index(a, b, smooth=1.):
     a = a.view(-1)
     b = b.view(-1)
-    intersection = (a * b).sum()
-    return ((2. * intersection + smooth) / (a.sum() + b.sum() + smooth)).item()
+    A = a.sum().item()
+    B = b.sum().item()
+    inter = (a * b).sum()
+    dice = (inter * 2.0 + smooth) / (A + B + smooth)
+    jaccard = (inter + smooth) / (A + B - inter + smooth)
+    return dice, jaccard
 
-def argmax_acc(a, b):
-    num_classes = a.size(1)
-    num_channels = a.nelement()
-    _, a = torch.max(a.permute(0, 2, 3, 1).contiguous().view(-1, num_classes), 1)
-    _, b = torch.max(b.permute(0, 2, 3, 1).contiguous().view(-1, num_classes), 1)
-    return (a == b).sum().item() / (num_channels // num_classes)
+def pixel_similarity_index(a, b, smooth=1.):
+    A = a.size(0)
+    B = b.size(0)
+    inter = (a == b).sum().item()
+    dice = (inter * 2.0 + smooth) / (A + B + smooth)
+    jaccard = (inter + smooth) / (A + B - inter + smooth)
+    return dice, jaccard
+
+def inspection_accuracy(pr_arr, gt_arr, smooth=1):
+    pr_arr = pr_arr.view(-1)
+    gt_arr = gt_arr.view(-1)
+    U = gt_arr.size(0)
+    pr = sum(pr_arr).item()
+    gt = sum(gt_arr).item()
+    tp = (pr_arr == gt_arr).sum().item()
+    sensitivity = tp + smooth / gt + smooth
+    specificity = (U - pr - gt + tp + smooth) / (U - gt + smooth)
+    return sensitivity, specificity
+
 
 def to_heatmap(org, base_color=[0, 255, 0]):
     z = np.zeros([*org.shape], dtype=np.uint8)

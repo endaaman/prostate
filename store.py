@@ -4,55 +4,39 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-KEY_NAME = 'name'
 KEY_WEIGHTS = 'weights'
-KEY_OPTIMS = 'optim_state'
-KEY_LOSSES = 'losses'
-KEY_DICES = 'dices'
-KEY_IOUS = 'ious'
+KEY_OPTIMS = 'optims'
+KEY_METRICS = 'metrics'
 
 class Store():
     def __init__(self, name=None):
         self.name = name
         self.weights = None
-        self.optim_state = None
-        self.losses = []
-        self.dices = []
-        self.ious = []
+        self.optims = None
+        self.metrics = None
 
     def load(self, path, map_location=None):
         data = torch.load(path, map_location=map_location)
-        self.name = data.get(KEY_NAME)
         self.weights = data.get(KEY_WEIGHTS)
-        self.optim_state = data.get(KEY_OPTIMS)
-        self.losses = data.get(KEY_LOSSES) or []
-        self.dices = data.get(KEY_DICES) or []
-        self.ious = data.get(KEY_IOUS) or []
+        self.optims = data.get(KEY_OPTIMS)
+        self.metrics = data.get(KEY_METRICS)
 
     def set_name(self, name):
         self.name = name
 
-    def set_states(self, weights, optim_state=None):
+    def set_states(self, weights, optims, metrics):
+        assert weights
+        assert optims
+        assert metrics
         self.weights = weights
-        if optim_state:
-            self.optim_state = optim_state
-
-    def append_params(self, optim_state=None, loss=None, dice=None, iou=None):
-        if loss:
-            self.losses.append(loss)
-        if dice:
-            self.dices.append(dice)
-        if iou:
-            self.ious.append(iou)
+        self.optims = optims
+        self.metrics = metrics
 
     def save(self, path):
         torch.save({
-            KEY_NAME: self.name,
             KEY_WEIGHTS: self.weights,
-            KEY_OPTIMS: self.optim_state,
-            KEY_LOSSES: self.losses,
-            KEY_DICES: self.dices,
-            KEY_IOUS: self.ious,
+            KEY_OPTIMS: self.optims,
+            KEY_METRICS: self.metrics,
             }, path)
 
 

@@ -15,7 +15,8 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 from models import get_model
 from data import DefaultDataset
 from store import Store
-from utils import now_str, pp, dice_coef, argmax_acc
+from metrics import Metrics
+from utils import now_str, pp, revert_onehot, similarity_index, pixel_similarity_index, inspection_accuracy
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-w', '--weight')
@@ -68,11 +69,12 @@ NUM_CLASSES = len(np.unique(INDEX_MAP))
 # EPOCH
 first_epoch = 1
 if STARTING_WEIGHT:
-    num = os.path.splitext(os.path.basename(STARTING_WEIGHT))[0]
-    if not num.isdigit():
+    basename = os.path.splitext(os.path.basename(STARTING_WEIGHT))[0]
+    nums = re.findall(r'\d+', basename)
+    if len(nums) > 0 and not nums[-1].isdigit():
         print(f'Invalid pt file')
         exit(1)
-    first_epoch = int(num) + 1
+    first_epoch = int(nums[-1]) + 1
     store.load(STARTING_WEIGHT)
 epoch = first_epoch
 
@@ -82,7 +84,6 @@ print(f'Preparing MODEL:{MODEL_NAME} BATCH:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE
 # MDOEL
 Model = get_model(MODEL_NAME)
 model = Model(num_classes=NUM_CLASSES).to(device)
-store.set_name(Model.__name__)
 if store.weights:
     model.load_state_dict(store.weights)
 if USE_MULTI_GPU:
@@ -117,20 +118,35 @@ def lr_func_exp(step):
     return 0.95 ** step
 
 optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-if store.optim_state:
-    optimizer.load_state_dict(store.optim_state)
-scheduler = LambdaLR(optimizer, lr_lambda=lr_func_exp, last_epoch=epoch if store.optim_state else -1)
+if store.optims:
+    optimizer.load_state_dict(store.optims)
+scheduler = LambdaLR(optimizer, lr_lambda=lr_func_exp, last_epoch=epoch if store.optims else -1)
 criterion = nn.BCELoss()
 # criterion = nn.BCEWithLogitsLoss()
+
+metrics = Metrics()
+if store.metrics:
+    metrics.load_state_dict(store.metrics)
+
+def process_metrics(outputs, labels):
+    dice, jac = similarity_index(outputs, labels)
+    output_values = revert_onehot(outputs)
+    label_values = revert_onehot(labels)
+    pdice, pjac = pixel_similarity_index(output_values, label_values)
+    output_glands = output_values >= IDX_NORMAL
+    label_glands = label_values >= IDX_NORMAL
+    output_tumors = output_values >= IDX_GLEASON_3
+    label_tumors = label_values >= IDX_GLEASON_3
+    gsensi, gspec = inspection_accuracy(output_glands, label_glands)
+    tsensi, tspec = inspection_accuracy(output_tumors, label_tumors)
+    return dice, jac, pdice, pjac, gsensi, gspec, tsensi, tspec
 
 
 # LOOP
 print(f'Starting ({now_str()})')
 iter_count = len(data_set) // BATCH_SIZE
 while epoch < first_epoch + EPOCH_COUNT:
-    iter_dices = []
-    iter_ious = []
-    iter_losses = []
+    iter_metrics = Metrics()
     lr = scheduler.get_lr()[0]
     for i, (inputs, labels) in enumerate(data_loader):
         inputs = inputs.to(device)
@@ -138,23 +154,27 @@ while epoch < first_epoch + EPOCH_COUNT:
         optimizer.zero_grad()
         outputs = model(inputs).to(device)
         loss = criterion(outputs, labels)
-        dice = dice_coef(outputs, labels)
-        iou = argmax_acc(outputs, labels)
-        iter_losses.append(loss.item())
-        iter_dices.append(dice)
-        iter_ious.append(iou)
+        values = process_metrics(outputs, labels)
+        iter_metrics.append_values(loss, *values)
+        pp(f'epoch[{epoch}]:{i}/{I} iou:{iou:.4f} acc:{acc:.4f} loss:{loss:.4f} lr:{lr:.4f} ({t})'.format(
+            ep=epoch, i=i+1, I=iter_count,
+            iou=iter_metrics.last('jac'),
+            acc=iter_metrics.last('pdice'),
+            loss=iter_metrics.last('loss'),
+            t=now_str()))
         loss.backward()
         optimizer.step()
-        pp(f'epoch[{epoch}]: {i+1} / {iter_count} dice: {dice:.4f} iou: {iou:.4f} loss: {loss:.4f} lr: {lr:.4f} ({now_str()})')
     print('')
-    epoch_loss = np.average(iter_losses)
-    epoch_dice = np.average(iter_dices)
-    epoch_iou = np.average(iter_ious)
-    print(f'epoch[{epoch}]: Done. dice:{epoch_dice:.4f} iou:{epoch_iou:.4f} loss:{epoch_loss:.4f} ({now_str()})')
-    weight_path = os.path.join(DEST_DIR, f'{epoch}.pt')
+    print('epoch[{ep}]: Done. iou:{iou:.4f} acc:{acc:.4f} loss:{loss:.4f} ({t})'.format(
+        ep=epoch,
+        iou=iter_metrics.avg('jac'),
+        acc=iter_metrics.avg('pdice'),
+        loss=iter_metrics.avg('loss'),
+        t=now_str()))
+    weight_path = os.path.join(DEST_DIR, f'{model.__class__.__name__.lower()}_{epoch}.pt')
     weights = model.module.cpu().state_dict() if USE_MULTI_GPU else model.cpu().state_dict()
-    store.set_states(weights, optimizer.state_dict())
-    store.append_params(loss=epoch_loss, dice=epoch_dice, iou=epoch_iou)
+    metrics.append_metrics(met)
+    store.set_states(weights, optimizer.state_dict(), metrics.state_dict())
     store.save(weight_path)
     print(f'save weights to {weight_path}')
     model = model.to(device)

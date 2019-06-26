@@ -272,6 +272,7 @@ class UResNet(nn.Module):
         out = self.final(out)
         return activation(out)
 
+
 MODELS = {
         'unet11': UNet11,
         'unet11b': UNet11b,
