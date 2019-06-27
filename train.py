@@ -76,7 +76,7 @@ if STARTING_WEIGHT:
     store.load(STARTING_WEIGHT)
 epoch = first_epoch
 
-print(f'Preparing MODEL:{MODEL_NAME} BATCH SIZE:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE: {mode} ({now_str()})')
+print(f'Preparing MODEL:{MODEL_NAME} BATCH:{BATCH_SIZE} EPOCH:{EPOCH_COUNT} MODE:{mode} ({now_str()})')
 
 
 # MDOEL
