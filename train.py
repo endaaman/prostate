@@ -133,10 +133,10 @@ def process_metrics(outputs, labels):
     output_values = revert_onehot(outputs)
     label_values = revert_onehot(labels)
     pdice, pjac = pixel_similarity_index(output_values, label_values)
-    output_glands = output_values >= IDX_NORMAL
-    label_glands = label_values >= IDX_NORMAL
-    output_tumors = output_values >= IDX_GLEASON_3
-    label_tumors = label_values >= IDX_GLEASON_3
+    output_glands = torch.gt(output_values, IDX_NONE)
+    label_glands = torch.gt(label_values, IDX_NONE)
+    output_tumors = torch.gt(output_values, IDX_NORMAL)
+    label_tumors = torch.gt(label_values, IDX_NORMAL)
     gsensi, gspec = inspection_accuracy(output_glands, label_glands)
     tsensi, tspec = inspection_accuracy(output_tumors, label_tumors)
     return dice, jac, pdice, pjac, gsensi, gspec, tsensi, tspec
@@ -155,25 +155,29 @@ while epoch < first_epoch + EPOCH_COUNT:
         outputs = model(inputs).to(device)
         loss = criterion(outputs, labels)
         values = process_metrics(outputs, labels)
-        iter_metrics.append_values(loss, *values)
-        pp(f'epoch[{epoch}]:{i}/{I} iou:{iou:.4f} acc:{acc:.4f} loss:{loss:.4f} lr:{lr:.4f} ({t})'.format(
-            ep=epoch, i=i+1, I=iter_count,
-            iou=iter_metrics.last('jac'),
-            acc=iter_metrics.last('pdice'),
-            loss=iter_metrics.last('loss'),
-            t=now_str()))
+        iter_metrics.append_values(loss.item(), *values)
+        pp('epoch[{ep}]:{i}/{I} iou:{iou:.4f} acc:{acc:.4f} loss:{loss:.4f} lr:{lr:.4f} gsi:{gsi:.4f} gsp:{gsp:.4f} tsi:{tsi:.4f} tsp:{gsp:.4f} ({t})'.format(
+            ep=epoch, i=i+1, I=iter_count, lr=lr, t=now_str(),
+            iou=iter_metrics.last('jacs'),
+            acc=iter_metrics.last('pdices'),
+            loss=iter_metrics.last('losses'),
+            gsi=iter_metrics.last('gsensis'),
+            gsp=iter_metrics.last('gspecs'),
+            tsi=iter_metrics.last('tsensis'),
+            tsp=iter_metrics.last('tspecs'),
+            ))
         loss.backward()
         optimizer.step()
     print('')
-    print('epoch[{ep}]: Done. iou:{iou:.4f} acc:{acc:.4f} loss:{loss:.4f} ({t})'.format(
+    print('epoch[{ep}]:Done. iou:{iou:.4f} acc:{acc:.4f} loss:{loss:.4f} ({t})'.format(
         ep=epoch,
-        iou=iter_metrics.avg('jac'),
-        acc=iter_metrics.avg('pdice'),
-        loss=iter_metrics.avg('loss'),
+        iou=iter_metrics.avg('jacs'),
+        acc=iter_metrics.avg('pdices'),
+        loss=iter_metrics.avg('losses'),
         t=now_str()))
-    weight_path = os.path.join(DEST_DIR, f'{model.__class__.__name__.lower()}_{epoch}.pt')
+    weight_path = os.path.join(DEST_DIR, f'{Model.__name__.lower()}_{epoch}.pt')
     weights = model.module.cpu().state_dict() if USE_MULTI_GPU else model.cpu().state_dict()
-    metrics.append_metrics(met)
+    metrics.append_metrics(iter_metrics)
     store.set_states(weights, optimizer.state_dict(), metrics.state_dict())
     store.save(weight_path)
     print(f'save weights to {weight_path}')

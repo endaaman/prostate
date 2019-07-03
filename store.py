@@ -1,7 +1,10 @@
+import os
 import argparse
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+
+from metrics import Metrics
 
 
 KEY_WEIGHTS = 'weights'
@@ -9,8 +12,7 @@ KEY_OPTIMS = 'optims'
 KEY_METRICS = 'metrics'
 
 class Store():
-    def __init__(self, name=None):
-        self.name = name
+    def __init__(self):
         self.weights = None
         self.optims = None
         self.metrics = None
@@ -20,9 +22,6 @@ class Store():
         self.weights = data.get(KEY_WEIGHTS)
         self.optims = data.get(KEY_OPTIMS)
         self.metrics = data.get(KEY_METRICS)
-
-    def set_name(self, name):
-        self.name = name
 
     def set_states(self, weights, optims, metrics):
         assert weights
@@ -49,8 +48,13 @@ if __name__ == '__main__':
     store = Store()
     store.load(PATH, map_location='cpu')
 
-    def plot_line(plt, values, label, offset=10):
+    metrics = Metrics()
+    metrics.load_state_dict(store.metrics)
+
+    def plot_line(plt, values, label, offset=None):
         plt.plot(values, label=label)
+        if not offset:
+            return
         for i, value in enumerate(values):
             text = "{:.3f}".format(value)
             plt.annotate(text, # this is the text
@@ -58,15 +62,25 @@ if __name__ == '__main__':
                          textcoords="offset points", # how to position the text
                          xytext=(0, offset), # distance from text to points (x,y)
                          ha='center') # horizontal alignment can be left, right or center
-    plt.figure(figsize=(max(len(store.losses)//1.5, 10), 10))
-    plot_line(plt, store.losses, 'loss')
-    plot_line(plt, store.dices, 'dice index', offset=-10)
-    plot_line(plt, store.ious, 'IoU')
 
-    if store.name:
-        plt.title(store.name)
-    plt.xticks(list(range(0, len(store.losses))))
-    plt.yticks(np.arange(1,10) / 10)
+    epoch = len(metrics.get('losses'))
+    plt.figure(figsize=(max(epoch//1.5, 10), 10))
+
+    name = os.path.splitext(os.path.basename(PATH))[0]
+    plt.title(name)
+
+    plot_line(plt, metrics.get('losses'), 'loss')
+    plot_line(plt, metrics.get('jacs'), 'IoU')
+    plot_line(plt, metrics.get('pjacs'), 'pIoU')
+    plot_line(plt, metrics.get('pdices'), 'acc')
+
+    plot_line(plt, metrics.get('gsensis'), 'gland sensi')
+    plot_line(plt, metrics.get('gspecs'), 'gland specs')
+    plot_line(plt, metrics.get('tsensis'), 'tumor sensi')
+    plot_line(plt, metrics.get('tspecs'), 'tumor specs')
+
+    plt.xticks(list(range(0, epoch)))
+    plt.yticks(np.arange(0, 11) / 10)
     plt.grid(True)
     plt.legend()
     plt.show()

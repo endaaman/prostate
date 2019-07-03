@@ -3,7 +3,7 @@
 
 epoch=30
 tile=256
-batch=8
+batch=32
 dest="weights/$tile"
 
 models=(

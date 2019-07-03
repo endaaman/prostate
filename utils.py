@@ -37,7 +37,7 @@ def similarity_index(a, b, smooth=1.):
     b = b.view(-1)
     A = a.sum().item()
     B = b.sum().item()
-    inter = (a * b).sum()
+    inter = (a * b).sum().item()
     dice = (inter * 2.0 + smooth) / (A + B + smooth)
     jaccard = (inter + smooth) / (A + B - inter + smooth)
     return dice, jaccard
@@ -54,10 +54,10 @@ def inspection_accuracy(pr_arr, gt_arr, smooth=1):
     pr_arr = pr_arr.view(-1)
     gt_arr = gt_arr.view(-1)
     U = gt_arr.size(0)
-    pr = sum(pr_arr).item()
-    gt = sum(gt_arr).item()
-    tp = (pr_arr == gt_arr).sum().item()
-    sensitivity = tp + smooth / gt + smooth
+    pr = pr_arr.sum().item()
+    gt = gt_arr.sum().item()
+    tp = (pr_arr * gt_arr).sum().item()
+    sensitivity = (tp + smooth) / (gt + smooth)
     specificity = (U - pr - gt + tp + smooth) / (U - gt + smooth)
     return sensitivity, specificity
 
