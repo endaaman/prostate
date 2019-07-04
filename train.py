@@ -13,7 +13,7 @@ from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
 
 from models import get_model
-from data import DefaultDataset
+from data import TrainingDataset
 from store import Store
 from metrics import Metrics
 from utils import now_str, pp, revert_onehot, similarity_index, pixel_similarity_index, inspection_accuracy
@@ -99,7 +99,7 @@ def transform_y(arr):
     arr[arr < 0] = 0 # fill overrun
     return ToTensor()(I[INDEX_MAP[arr]])
 
-data_set = DefaultDataset(
+data_set = TrainingDataset(
         transform_x = Compose([
             ToTensor(),
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])

@@ -7,7 +7,6 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 from torch.utils.data import Dataset, DataLoader
 
 
-
 class BaseDataset(Dataset):
     def read_image(self, name):
         raw = cv2.imread(name, cv2.IMREAD_UNCHANGED)
@@ -15,12 +14,10 @@ class BaseDataset(Dataset):
             raise FileNotFoundError(ENOENT, os.strerror(ENOENT), name)
         return raw
 
-    def __init__(self, transform_x=None, transform_y=None, tile_size=224):
+    def __init__(self, base_dir='./train', transform_x=None, transform_y=None):
         self.transform_x = transform_x
         self.transform_y = transform_y
-        self.tile_size = tile_size
-        base_dir = './train'
-        file_names = os.listdir(f'{base_dir}/y')
+        file_names = sorted(os.listdir(f'{base_dir}/y'))
         self.names = []
         self.x_raws = []
         self.y_raws = []
@@ -36,6 +33,22 @@ class BaseDataset(Dataset):
         if self.transform_y:
             y = self.transform_y(y)
         return x, y
+
+
+class TrainingDataset(BaseDataset):
+    def __init__(self, tile_size, p_rotation=-1, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tile_size = tile_size
+        self.p_rotation = p_rotation
+
+    def flip_and_rot90(self, arr, op):
+        if op > 3:
+            arr = np.flip(arr, axis=0)
+        return np.rot90(arr, op % 4)
+
+    def rotate(self, arr, degree):
+        i = scipy.ndimage.rotate(arr, degree, mode='mirror')
+        return i
 
     def check_available(self, arr):
         return np.any(arr != 0)
@@ -59,21 +72,6 @@ class BaseDataset(Dataset):
         x_arr = x_raw[top:top + size, left:left + size]
         return (x_arr, y_arr)
 
-
-class DefaultDataset(BaseDataset):
-    def __init__(self, p_rotation=-1, *args, **kwargs):
-        super(DefaultDataset, self).__init__(*args, **kwargs)
-        self.p_rotation = p_rotation
-
-    def flip_and_rot90(self, arr, op):
-        if op > 3:
-            arr = np.flip(arr, axis=0)
-        return np.rot90(arr, op % 4)
-
-    def rotate(self, arr, degree):
-        i = scipy.ndimage.rotate(arr, degree, mode='mirror')
-        return i
-
     def __len__(self):
         l = 0
         for i in self.y_raws:
@@ -96,3 +94,14 @@ class DefaultDataset(BaseDataset):
             x_arr = x_arr[top:top + size, left:left + size]
             y_arr = y_arr[top:top + size, left:left + size]
         return self.transform(x_arr.copy(), y_arr.copy())
+
+
+class ValidationDataset(BaseDataset):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __len__(self):
+        return len(self.y_raws)
+
+    def __getitem__(self, i):
+        return self.x_raws[i], self.y_raws[i]

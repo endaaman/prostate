@@ -10,21 +10,20 @@ import torch.nn.functional as F
 from torchvision.transforms import ToTensor, Normalize, Compose
 
 from models import get_model
+from data import ValidationDataset
 from store import Store
-from utils import now_str, curry, to_heatmap, overlay_transparent
+from utils import now_str
 
 
 NUM_CLASSES = 5
 
 parser = argparse.ArgumentParser()
-parser.add_argument('input')
 parser.add_argument('-w', '--weight')
 parser.add_argument('-m', '--model')
 parser.add_argument('--cpu', action="store_true")
 parser.add_argument('-d', '--dest', default='out')
 args = parser.parse_args()
 
-INPUT_PATH = args.input
 WEIGHT_PATH = args.weight
 MODEL_NAME = args.model
 DEST_BASE_DIR = args.dest
@@ -35,7 +34,7 @@ USE_MULTI_GPU = USE_GPU and torch.cuda.device_count() > 1
 DEST_DIR = os.path.join(DEST_BASE_DIR, MODEL_NAME)
 
 mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
-print(f'Preparing MODEL:{MODEL_NAME} MODE:{mode} NUM_CLASSES:{NUM_CLASSES} TARGET:{INPUT_PATH} ({time_str()})')
+print(f'Preparing MODEL:{MODEL_NAME} MODE:{mode} NUM_CLASSES:{NUM_CLASSES} ({now_str()})')
 
 
 def add_padding(img):
@@ -50,8 +49,7 @@ def add_padding(img):
     return new_arr, (left, top, left + w, top + h)
 
 
-def post_process(tensor, dims=None):
-    arr = np.transpose(tensor.numpy(), (1, 2, 0))
+def remove_padding(tensor, dims=None):
     if dims:
         arr = arr[dims[1]:dims[3], dims[0]:dims[2]]
     row_sums = np.sum(arr, axis=2)
@@ -81,20 +79,26 @@ else:
 if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
 
-input_img = cv2.imread(INPUT_PATH)
-padded_input_img, original_dims = add_padding(input_img)
-pre_process = Compose([
-    ToTensor(),
-    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-])
 
-print(f'Start inference')
-input_tensor = torch.unsqueeze(pre_process(padded_input_img).to(device), dim=0)
-with torch.no_grad():
-    output_tensor = model(input_tensor)
+print(f'Start validation')
+dataset = ValidationDataset()
+for (x, y) in dataset:
+    print(x.shape)
+    padded_input_img, original_dims = add_padding(x)
+    pre_process = Compose([
+        ToTensor(),
+        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    input_tensor = torch.unsqueeze(pre_process(padded_input_img).to(device), dim=0)
+    with torch.no_grad():
+        output_tensor = model(input_tensor)
+    print(output_tensor.size())
+    output_tensor = np.transpose(output_tensor.numpy(), (1, 2, 0))
+    print(output_tensor.size())
+    mask_arr = remove_padding(output_tensor.data[0].cpu(), original_dims)
+    break
 
-mask_arr = post_process(output_tensor.data[0].cpu(), original_dims)
-print(f'Finished inference.')
+
 
 base_name = os.path.splitext(os.path.basename(INPUT_PATH))[0]
 output_dir = f'./{DEST_BASE_DIR}/{MODEL_NAME}/{base_name}'
