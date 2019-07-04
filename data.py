@@ -78,7 +78,6 @@ class DefaultDataset(BaseDataset):
         l = 0
         for i in self.y_raws:
             l += int((i.shape[0] / self.tile_size) * (i.shape[1] / self.tile_size))
-        return l
         return l * 8
 
     def __getitem__(self, _idx):

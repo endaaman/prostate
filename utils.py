@@ -12,7 +12,7 @@ def pack(arr):
 
 def curry(*args, **kwds):
     def callit(*moreargs, **morekwds):
-        kw = kwds.copy(  )
+        kw = kwds.copy()
         kw.update(morekwds)
         return args[0](*(args[1:]+moreargs), **kw)
     return callit
@@ -60,7 +60,6 @@ def inspection_accuracy(pr_arr, gt_arr, smooth=1):
     sensitivity = (tp + smooth) / (gt + smooth)
     specificity = (U - pr - gt + tp + smooth) / (U - gt + smooth)
     return sensitivity, specificity
-
 
 def to_heatmap(org, base_color=[0, 255, 0]):
     z = np.zeros([*org.shape], dtype=np.uint8)

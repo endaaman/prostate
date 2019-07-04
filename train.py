@@ -94,7 +94,7 @@ if USE_MULTI_GPU:
 I = np.identity(NUM_CLASSES, dtype=np.float32)
 def transform_y(arr):
     arr[arr > 0] = 1 # to 1bit each color
-    arr = np.sum(np.multiply(arr, (1,2,4,8)), axis=2) # to 4bit each pixel
+    arr = np.sum(np.multiply(arr, (1, 2, 4, 8)), axis=2) # to 4bit each pixel
     arr = arr - 7 # to 3bit + 1
     arr[arr < 0] = 0 # fill overrun
     return ToTensor()(I[INDEX_MAP[arr]])
@@ -110,10 +110,6 @@ data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_work
 
 
 # TRAIN
-inflection = 100
-def lr_func_linear(step):
-    return max(1 - step * 0.9 / inflection, 0.1)
-
 def lr_func_exp(step):
     return 0.95 ** step
 
@@ -156,24 +152,27 @@ while epoch < first_epoch + EPOCH_COUNT:
         loss = criterion(outputs, labels)
         values = process_metrics(outputs, labels)
         iter_metrics.append_values(loss.item(), *values)
-        pp('epoch[{ep}]:{i}/{I} iou:{iou:.4f} acc:{acc:.4f} loss:{loss:.4f} lr:{lr:.4f} gsi:{gsi:.4f} gsp:{gsp:.4f} tsi:{tsi:.4f} tsp:{gsp:.4f} ({t})'.format(
+        pp('epoch[{ep}]:{i}/{I} iou:{iou:.4f} acc:{acc:.4f} loss:{loss:.4f} lr:{lr:.4f} ({t})'.format(
             ep=epoch, i=i+1, I=iter_count, lr=lr, t=now_str(),
             iou=iter_metrics.last('jacs'),
             acc=iter_metrics.last('pdices'),
+            # gsi=iter_metrics.last('gsensis'),
+            # gsp=iter_metrics.last('gspecs'),
+            # tsi=iter_metrics.last('tsensis'),
+            # tsp=iter_metrics.last('tspecs'),
             loss=iter_metrics.last('losses'),
-            gsi=iter_metrics.last('gsensis'),
-            gsp=iter_metrics.last('gspecs'),
-            tsi=iter_metrics.last('tsensis'),
-            tsp=iter_metrics.last('tspecs'),
             ))
         loss.backward()
         optimizer.step()
-    print('')
-    print('epoch[{ep}]:Done. iou:{iou:.4f} acc:{acc:.4f} loss:{loss:.4f} ({t})'.format(
+    pp('epoch[{ep}]:Done. iou:{iou:.4f} acc:{acc:.4f} loss:{loss:.4f} ({t})'.format(
         ep=epoch,
         iou=iter_metrics.avg('jacs'),
         acc=iter_metrics.avg('pdices'),
         loss=iter_metrics.avg('losses'),
+        # gsi=iter_metrics.avg('gsensis'),
+        # gsp=iter_metrics.avg('gspecs'),
+        # tsi=iter_metrics.avg('tsensis'),
+        # tsp=iter_metrics.avg('tspecs'),
         t=now_str()))
     weight_path = os.path.join(DEST_DIR, f'{Model.__name__.lower()}_{epoch}.pt')
     weights = model.module.cpu().state_dict() if USE_MULTI_GPU else model.cpu().state_dict()
