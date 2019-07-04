@@ -81,10 +81,10 @@ if USE_MULTI_GPU:
 
 
 print(f'Start validation')
-dataset = ValidationDataset(max_size=3000)
+dataset = ValidationDataset(max_size=1000)
 for (x_data, y_data) in dataset:
-    for y in x_data.shape[0]:
-        for y in x_data.shape[1]:
+    for y in range(x_data.shape[0]):
+        for x in range(x_data.shape[1]):
             input_tensor = x_data[y][x]
             input_tensor, original_dims = add_padding(input_tensor)
             pre_process = Compose([
