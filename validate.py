@@ -81,24 +81,25 @@ if USE_MULTI_GPU:
 
 
 print(f'Start validation')
-dataset = ValidationDataset()
-for (x, y) in dataset:
-    print(x.shape)
-    padded_input_img, original_dims = add_padding(x)
-    pre_process = Compose([
-        ToTensor(),
-        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-    input_tensor = torch.unsqueeze(pre_process(padded_input_img).to(device), dim=0)
-    with torch.no_grad():
-        output_tensor = model(input_tensor)
-    print(output_tensor.size())
-    output_tensor = np.transpose(output_tensor.numpy(), (1, 2, 0))
-    print(output_tensor.size())
-    mask_arr = remove_padding(output_tensor.data[0].cpu(), original_dims)
-    break
+dataset = ValidationDataset(max_size=3000)
+for (x_data, y_data) in dataset:
+    for y in x_data.shape[0]:
+        for y in x_data.shape[1]:
+            input_tensor = x_data[y][x]
+            input_tensor, original_dims = add_padding(input_tensor)
+            pre_process = Compose([
+                ToTensor(),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ])
+            input_tensor = torch.unsqueeze(pre_process(input_tensor).to(device), dim=0)
+            with torch.no_grad():
+                output_tensor = model(input_tensor)
+            output_tensor = np.transpose(output_tensor.numpy(), (1, 2, 0))
+            output_tensor = remove_padding(output_tensor.data[0].cpu(), original_dims)
+            print(output_tensor.size())
+            break
 
-
+exit(0)
 
 base_name = os.path.splitext(os.path.basename(INPUT_PATH))[0]
 output_dir = f'./{DEST_BASE_DIR}/{MODEL_NAME}/{base_name}'

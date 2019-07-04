@@ -97,11 +97,29 @@ class TrainingDataset(BaseDataset):
 
 
 class ValidationDataset(BaseDataset):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, max_size, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.max_size = max_size
 
     def __len__(self):
         return len(self.y_raws)
 
     def __getitem__(self, i):
-        return self.x_raws[i], self.y_raws[i]
+        x_raw, y_raw = self.x_raws[i], self.y_raws[i]
+        H, W = x_raw.shape[:2]
+        Y = -(-x_raw.shape[0] // self.max_size)
+        X = -(-x_raw.shape[1] // self.max_size)
+        ww = [(W + i) // X for i in range(X)]
+        hh = [(H + i) // Y for i in range(Y)]
+        x_data, y_data = [], []
+        pos = [0, 0]
+        for y, h in enumerate(hh):
+            pos[0] = 0
+            x_data.append([])
+            y_data.append([])
+            for x, w in enumerate(ww):
+                x_data[-1].append(x_raw[pos[1]:pos[1]+h, pos[0]:pos[0]+w])
+                y_data[-1].append(y_raw[pos[1]:pos[1]+h, pos[0]:pos[0]+w])
+                pos[0] += w
+            pos[1] += h
+        return self.transform(np.array(x_data).copy(), np.array(y_data).copy())
