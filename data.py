@@ -14,7 +14,7 @@ class BaseDataset(Dataset):
             raise FileNotFoundError(ENOENT, os.strerror(ENOENT), name)
         return raw
 
-    def __init__(self, base_dir='./train', transform_x=None, transform_y=None):
+    def __init__(self, base_dir='./train', transform_x=None, transform_y=None, one=False):
         self.transform_x = transform_x
         self.transform_y = transform_y
         file_names = sorted(os.listdir(f'{base_dir}/y'))
@@ -26,6 +26,8 @@ class BaseDataset(Dataset):
             self.x_raws.append(self.read_image(f'{base_dir}/x/{base_name}.jpg'))
             self.y_raws.append(self.read_image(f'{base_dir}/y/{base_name}.png'))
             self.names.append(base_name)
+            if one:
+                break
 
     def transform(self, x, y):
         if self.transform_x:
@@ -118,8 +120,8 @@ class ValidationDataset(BaseDataset):
             x_data.append([])
             y_data.append([])
             for x, w in enumerate(ww):
-                x_data[-1].append(x_raw[pos[1]:pos[1]+h, pos[0]:pos[0]+w])
-                y_data[-1].append(y_raw[pos[1]:pos[1]+h, pos[0]:pos[0]+w])
+                x_data[-1].append(x_raw[pos[1]:pos[1]+h, pos[0]:pos[0]+w].copy())
+                y_data[-1].append(y_raw[pos[1]:pos[1]+h, pos[0]:pos[0]+w].copy())
                 pos[0] += w
             pos[1] += h
-        return self.transform(np.array(x_data).copy(), np.array(y_data).copy())
+        return x_data, y_data, self.names[i]

@@ -1,5 +1,6 @@
 import os
 import math
+import re
 import argparse
 from enum import Enum, auto
 import numpy as np
@@ -15,8 +16,9 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 from models import get_model
 from data import TrainingDataset
 from store import Store
-from metrics import Metrics
-from utils import now_str, pp, revert_onehot, similarity_index, pixel_similarity_index, inspection_accuracy
+from metrics import Metrics, calc_coef
+from formula import *
+from utils import now_str, pp
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-w', '--weight')
@@ -49,22 +51,6 @@ if not os.path.isdir(DEST_DIR):
 store = Store()
 mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
 device = 'cuda' if USE_GPU else 'cpu'
-
-# FORMULA
-IDX_NONE, IDX_NORMAL, IDX_GLEASON_3, IDX_GLEASON_4, IDX_GLEASON_5 = range(5)
-INDEX_MAP = np.array([
-    IDX_NONE,      # empty
-    IDX_NORMAL,    # 000: black
-    IDX_GLEASON_3, # B00: blue
-    IDX_GLEASON_4, # 0G0: green
-    IDX_GLEASON_3, # BG0: cyan
-    IDX_GLEASON_5, # 00R: red
-    IDX_NORMAL,    # B0R: purple
-    IDX_GLEASON_5, # 0GR: yellow
-    IDX_NONE,      # BGR: white
-])
-NUM_CLASSES = len(np.unique(INDEX_MAP))
-
 
 # EPOCH
 first_epoch = 1
@@ -120,22 +106,10 @@ scheduler = LambdaLR(optimizer, lr_lambda=lr_func_exp, last_epoch=epoch if store
 criterion = nn.BCELoss()
 # criterion = nn.BCEWithLogitsLoss()
 
+
 metrics = Metrics()
 if store.metrics:
     metrics.load_state_dict(store.metrics)
-
-def process_metrics(outputs, labels):
-    dice, jac = similarity_index(outputs, labels)
-    output_values = revert_onehot(outputs)
-    label_values = revert_onehot(labels)
-    pdice, pjac = pixel_similarity_index(output_values, label_values)
-    output_glands = torch.gt(output_values, IDX_NONE)
-    label_glands = torch.gt(label_values, IDX_NONE)
-    output_tumors = torch.gt(output_values, IDX_NORMAL)
-    label_tumors = torch.gt(label_values, IDX_NORMAL)
-    gsensi, gspec = inspection_accuracy(output_glands, label_glands)
-    tsensi, tspec = inspection_accuracy(output_tumors, label_tumors)
-    return dice, jac, pdice, pjac, gsensi, gspec, tsensi, tspec
 
 
 # LOOP
@@ -150,17 +124,20 @@ while epoch < first_epoch + EPOCH_COUNT:
         optimizer.zero_grad()
         outputs = model(inputs).to(device)
         loss = criterion(outputs, labels)
-        values = process_metrics(outputs, labels)
-        iter_metrics.append_values(loss.item(), *values)
-        pp('epoch[{ep}]:{i}/{I} iou:{iou:.4f} acc:{acc:.4f} loss:{loss:.4f} lr:{lr:.4f} ({t})'.format(
-            ep=epoch, i=i+1, I=iter_count, lr=lr, t=now_str(),
-            iou=iter_metrics.last('jacs'),
-            acc=iter_metrics.last('pdices'),
+        coef = calc_coef(outputs, labels)
+        iter_metrics.append_loss(loss.item())
+        iter_metrics.append_coef(coef)
+        pp('epoch[{ep}]:{i}/{I} iou:{iou:.4f} acc:{acc:.4f} dice:{dice:.4f} jac:{jac:.4f} loss:{loss:.4f} lr:{lr:.4f} ({t})'.format(
+            ep=epoch, i=i+1, I=iter_count, lr=lr, t=now_str(), loss=loss.item(),
+            iou=coef.pjac,
+            acc=coef.pdice,
+            dice=coef.dice,
+            jac=coef.jac,
             # gsi=iter_metrics.last('gsensis'),
             # gsp=iter_metrics.last('gspecs'),
             # tsi=iter_metrics.last('tsensis'),
             # tsp=iter_metrics.last('tspecs'),
-            loss=iter_metrics.last('losses'),
+            # loss=iter_metrics.last('losses'),
             ))
         loss.backward()
         optimizer.step()

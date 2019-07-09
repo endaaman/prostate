@@ -33,8 +33,8 @@ def revert_onehot(t):
     return img
 
 def similarity_index(a, b, smooth=1.):
-    a = a.view(-1)
-    b = b.view(-1)
+    a = a.contiguous().view(-1)
+    b = b.contiguous().view(-1)
     A = a.sum().item()
     B = b.sum().item()
     inter = (a * b).sum().item()

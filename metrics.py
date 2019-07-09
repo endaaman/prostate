@@ -1,16 +1,51 @@
 import copy
 import argparse
+from collections import namedtuple
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-KEYS = ['losses', 'dices', 'jacs', 'pdices', 'pjacs', 'gsensis', 'gspecs', 'tsensis', 'tspecs',]
+from formula import *
+from utils import revert_onehot, similarity_index, pixel_similarity_index, inspection_accuracy
+
+
+PLURAL_KEYS = ['losses', 'dices', 'jacs', 'pdices', 'pjacs', 'gsensis', 'gspecs', 'tsensis', 'tspecs',]
+SINGULAR_KEYS = ['loss', 'dice', 'jac', 'pdice', 'pjac', 'gsensi', 'gspec', 'tsensi', 'tspec',]
+assert(len(PLURAL_KEYS) == len(SINGULAR_KEYS))
+
+Coef = namedtuple('Coef', SINGULAR_KEYS[1:])
+
+
+def calc_coef(outputs, labels):
+    assert(isinstance(labels, torch.Tensor))
+    assert(isinstance(outputs, torch.Tensor))
+    assert(outputs.size() == labels.size())
+    dice, jac = similarity_index(outputs, labels)
+    output_values = revert_onehot(outputs)
+    label_values = revert_onehot(labels)
+    pdice, pjac = pixel_similarity_index(output_values, label_values)
+    output_glands = torch.gt(output_values, IDX_NONE)
+    label_glands = torch.gt(label_values, IDX_NONE)
+    output_tumors = torch.gt(output_values, IDX_NORMAL)
+    label_tumors = torch.gt(label_values, IDX_NORMAL)
+    gsensi, gspec = inspection_accuracy(output_glands, label_glands)
+    tsensi, tspec = inspection_accuracy(output_tumors, label_tumors)
+    return Coef(dice, jac, pdice, pjac, gsensi, gspec, tsensi, tspec)
+
 
 class Metrics():
     def __init__(self):
         self.data = {}
-        for key in KEYS:
+        for key in PLURAL_KEYS:
             self.data[key]  = []
+
+    def append_loss(self, loss):
+        self.data['losses'].append(loss)
+
+    def append_coef(self, coef):
+        for i, s in enumerate(SINGULAR_KEYS[1:]):
+            p = PLURAL_KEYS[i]
+            self.data[p].append(getattr(coef, s))
 
     def append_values(self, loss, dice, jac, pdice, pjac, gsensi, gspec, tsensi, tspec):
         self.data['losses'].append(loss)
@@ -24,16 +59,28 @@ class Metrics():
         self.data['tspecs'].append(tspec)
 
     def get_avg_values(self):
-        return [np.average(self.data[key]) for key in KEYS]
+        return Coef(*[np.average(self.data[key]) for key in PLURAL_KEYS])
 
-    def append_metrics(self, metrics):
-        self.append_values(*metrics.get_avg_values())
+    def append_nested_metrics(self, metrics):
+        self.append_entry(*metrics.get_avg_values())
 
     def load_state_dict(self, data):
         self.data = copy.deepcopy(data)
 
     def state_dict(self):
         return copy.deepcopy(self.data)
+
+    def avg_coef(self):
+        l = []
+        for i, p in enumerate(PLURAL_KEYS[1:]):
+            l.append(np.average(self.data[p]))
+        return Coef(*l)
+
+    def avg_last(self):
+        l = []
+        for i, p in enumerate(PLURAL_KEYS[1:]):
+            l.append(self.data[p][-1])
+        return Coef(*l)
 
     def avg(self, key):
         return np.average(self.data[key])

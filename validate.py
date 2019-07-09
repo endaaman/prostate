@@ -1,6 +1,7 @@
 import os
 import sys
 import math
+import gc
 import argparse
 import numpy as np
 import cv2
@@ -12,10 +13,10 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 from models import get_model
 from data import ValidationDataset
 from store import Store
+from metrics import Metrics, calc_coef
 from utils import now_str
+from formula import *
 
-
-NUM_CLASSES = 5
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-w', '--weight')
@@ -48,12 +49,18 @@ def add_padding(img):
     new_arr = np.pad(img, ((top, bottom), (left, right), (0, 0)), 'constant', constant_values=0)
     return new_arr, (left, top, left + w, top + h)
 
-
-def remove_padding(tensor, dims=None):
+def remove_padding(arr, dims=None):
     if dims:
         arr = arr[dims[1]:dims[3], dims[0]:dims[2]]
     row_sums = np.sum(arr, axis=2)
     return arr / row_sums[:, :, np.newaxis]
+
+def img_to_label(arr):
+    arr[arr > 0] = 1 # to 1bit each color
+    arr = np.sum(np.multiply(arr, (1, 2, 4, 8)), axis=2) # to 4bit each pixel
+    arr = arr - 7 # to 3bit + 1
+    arr[arr < 0] = 0 # fill overrun
+    return np.identity(NUM_CLASSES, dtype=np.float32)[INDEX_MAP[arr]]
 
 def arr_to_img(arr):
     COLOR_MAP = np.array([
@@ -81,24 +88,31 @@ if USE_MULTI_GPU:
 
 
 print(f'Start validation')
-dataset = ValidationDataset(max_size=1000)
-for (x_data, y_data) in dataset:
-    for y in range(x_data.shape[0]):
-        for x in range(x_data.shape[1]):
-            input_tensor = x_data[y][x]
-            input_tensor, original_dims = add_padding(input_tensor)
+dataset = ValidationDataset(max_size=1000, one=True)
+for (x_data, y_data, name) in dataset:
+    print(name)
+    metrics = Metrics()
+    for y, row in enumerate(x_data):
+        for x, input_arr in enumerate(row):
+            label_arr = img_to_label(y_data[y][x])
+            input_arr, original_dims = add_padding(x_data[y][x])
             pre_process = Compose([
                 ToTensor(),
                 Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
-            input_tensor = torch.unsqueeze(pre_process(input_tensor).to(device), dim=0)
+            input_tensor = torch.unsqueeze(pre_process(input_arr).to(device), dim=0)
             with torch.no_grad():
                 output_tensor = model(input_tensor)
-            output_tensor = np.transpose(output_tensor.numpy(), (1, 2, 0))
-            output_tensor = remove_padding(output_tensor.data[0].cpu(), original_dims)
-            print(output_tensor.size())
-            break
-
+            output_arr = output_tensor.data[0].cpu().numpy()
+            output_arr = np.transpose(output_arr, (1, 2, 0))
+            output_arr = remove_padding(output_arr, original_dims)
+            outputs_tensor = torch.unsqueeze(torch.from_numpy(output_arr).to(device), dim=0)
+            labels_tensor = torch.unsqueeze(torch.from_numpy(label_arr).to(device), dim=0)
+            coef = calc_coef(outputs_tensor, labels_tensor)
+            metrics.append_coef(coef)
+            gc.collect()
+            print(x, y)
+    print(name, metrics.avg_coef())
 exit(0)
 
 base_name = os.path.splitext(os.path.basename(INPUT_PATH))[0]
