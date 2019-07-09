@@ -38,10 +38,11 @@ class BaseDataset(Dataset):
 
 
 class TrainingDataset(BaseDataset):
-    def __init__(self, tile_size, p_rotation=-1, *args, **kwargs):
+    def __init__(self, tile_size, p_rotation=-1, stricted_roi=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tile_size = tile_size
         self.p_rotation = p_rotation
+        self.stricted_roi = stricted_roi
 
     def flip_and_rot90(self, arr, op):
         if op > 3:
@@ -53,7 +54,7 @@ class TrainingDataset(BaseDataset):
         return i
 
     def check_available(self, arr):
-        return np.any(arr != 0)
+        return self.stricted_roi or np.any(arr != 0)
 
     def select(self):
         p = []

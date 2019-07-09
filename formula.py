@@ -14,3 +14,11 @@ INDEX_MAP = np.array([
     IDX_NONE,      # BGR: white
 ])
 NUM_CLASSES = len(np.unique(INDEX_MAP))
+
+COLOR_MAP = np.array([
+    [   0,   0,   0,   0], # 0 -> transparent
+    [   0,   0,   0, 255], # 1 -> black
+    [ 255,   0,   0, 255], # 2 -> blue
+    [   0, 255,   0, 255], # 3 -> green
+    [   0,   0, 255, 255], # 4 -> red
+], dtype='uint8')

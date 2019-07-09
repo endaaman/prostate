@@ -86,13 +86,19 @@ else:
 if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
 
+def label_to_img(arr):
+    arr = np.argmax(arr, axis=2)
+    return COLOR_MAP[arr]
+
 
 print(f'Start validation')
-dataset = ValidationDataset(max_size=1000, one=True)
+dataset = ValidationDataset(max_size=3000, one=False)
 for (x_data, y_data, name) in dataset:
     print(name)
     metrics = Metrics()
+    output_arr_list = []
     for y, row in enumerate(x_data):
+        output_arr_list.append([])
         for x, input_arr in enumerate(row):
             label_arr = img_to_label(y_data[y][x])
             input_arr, original_dims = add_padding(x_data[y][x])
@@ -106,13 +112,19 @@ for (x_data, y_data, name) in dataset:
             output_arr = output_tensor.data[0].cpu().numpy()
             output_arr = np.transpose(output_arr, (1, 2, 0))
             output_arr = remove_padding(output_arr, original_dims)
-            outputs_tensor = torch.unsqueeze(torch.from_numpy(output_arr).to(device), dim=0)
-            labels_tensor = torch.unsqueeze(torch.from_numpy(label_arr).to(device), dim=0)
-            coef = calc_coef(outputs_tensor, labels_tensor)
+            # output_img = label_to_img(output_arr)
+            # cv2.imwrite(f'tmp/{x}_{y}.jpg', input_arr)
+            # cv2.imwrite(f'tmp/{x}_{y}.png', output_img)
+            output_tensor = torch.unsqueeze(torch.from_numpy(output_arr).permute(2, 0, 1), dim=0).to(device)
+            label_tensor = torch.unsqueeze(torch.from_numpy(label_arr).permute(2, 0, 1), dim=0).to(device)
+            coef = calc_coef(output_tensor, label_tensor)
+            output_arr_list.append(output_arr)
             metrics.append_coef(coef)
             gc.collect()
             print(x, y)
+    output_image = np.block(output_arr_list)
     print(name, metrics.avg_coef())
+
 exit(0)
 
 base_name = os.path.splitext(os.path.basename(INPUT_PATH))[0]

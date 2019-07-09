@@ -1,6 +1,6 @@
 import copy
 import argparse
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -35,7 +35,7 @@ def calc_coef(outputs, labels):
 
 class Metrics():
     def __init__(self):
-        self.data = {}
+        self.data = OrderedDict()
         for key in PLURAL_KEYS:
             self.data[key]  = []
 
@@ -43,7 +43,9 @@ class Metrics():
         self.data['losses'].append(loss)
 
     def append_coef(self, coef):
-        for i, s in enumerate(SINGULAR_KEYS[1:]):
+        for i, s in enumerate(SINGULAR_KEYS):
+            if i is 0:
+                continue
             p = PLURAL_KEYS[i]
             self.data[p].append(getattr(coef, s))
 
@@ -76,7 +78,7 @@ class Metrics():
             l.append(np.average(self.data[p]))
         return Coef(*l)
 
-    def avg_last(self):
+    def last_coef(self):
         l = []
         for i, p in enumerate(PLURAL_KEYS[1:]):
             l.append(self.data[p][-1])
