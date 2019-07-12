@@ -38,7 +38,7 @@ class BaseDataset(Dataset):
 
 
 class TrainingDataset(BaseDataset):
-    def __init__(self, tile_size, p_rotation=-1, stricted_roi=True, *args, **kwargs):
+    def __init__(self, tile_size, p_rotation=-1, stricted_roi=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tile_size = tile_size
         self.p_rotation = p_rotation

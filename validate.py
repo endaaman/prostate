@@ -96,9 +96,9 @@ dataset = ValidationDataset(max_size=3000, one=False)
 for (x_data, y_data, name) in dataset:
     print(name)
     metrics = Metrics()
-    output_arr_list = []
+    output_img_rows = []
     for y, row in enumerate(x_data):
-        output_arr_list.append([])
+        output_img_tiles = []
         for x, input_arr in enumerate(row):
             label_arr = img_to_label(y_data[y][x])
             input_arr, original_dims = add_padding(x_data[y][x])
@@ -112,18 +112,19 @@ for (x_data, y_data, name) in dataset:
             output_arr = output_tensor.data[0].cpu().numpy()
             output_arr = np.transpose(output_arr, (1, 2, 0))
             output_arr = remove_padding(output_arr, original_dims)
-            # output_img = label_to_img(output_arr)
-            # cv2.imwrite(f'tmp/{x}_{y}.jpg', input_arr)
-            # cv2.imwrite(f'tmp/{x}_{y}.png', output_img)
             output_tensor = torch.unsqueeze(torch.from_numpy(output_arr).permute(2, 0, 1), dim=0).to(device)
             label_tensor = torch.unsqueeze(torch.from_numpy(label_arr).permute(2, 0, 1), dim=0).to(device)
             coef = calc_coef(output_tensor, label_tensor)
-            output_arr_list.append(output_arr)
+            output_img_tiles.append(output_arr)
             metrics.append_coef(coef)
             gc.collect()
-            print(x, y)
-    output_image = np.block(output_arr_list)
+            print(x, y, output_arr.shape)
+        output_img_rows.append(cv2.hconcat(output_img_tiles))
+    output_img = label_to_img(cv2.vconcat(output_img_rows))
+    print(output_img.shape)
+    cv2.imwrite(f'tmp/{name}.png', output_img)
     print(name, metrics.avg_coef())
+    break
 
 exit(0)
 

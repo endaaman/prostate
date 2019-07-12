@@ -106,11 +106,9 @@ scheduler = LambdaLR(optimizer, lr_lambda=lr_func_exp, last_epoch=epoch if store
 criterion = nn.BCELoss()
 # criterion = nn.BCEWithLogitsLoss()
 
-
 metrics = Metrics()
 if store.metrics:
     metrics.load_state_dict(store.metrics)
-
 
 # LOOP
 print(f'Starting ({now_str()})')
@@ -127,33 +125,17 @@ while epoch < first_epoch + EPOCH_COUNT:
         coef = calc_coef(outputs, labels)
         iter_metrics.append_loss(loss.item())
         iter_metrics.append_coef(coef)
-        pp('epoch[{ep}]:{i}/{I} iou:{iou:.4f} acc:{acc:.4f} dice:{dice:.4f} jac:{jac:.4f} loss:{loss:.4f} lr:{lr:.4f} ({t})'.format(
-            ep=epoch, i=i+1, I=iter_count, lr=lr, t=now_str(), loss=loss.item(),
-            iou=coef.pjac,
-            acc=coef.pdice,
-            dice=coef.dice,
-            jac=coef.jac,
-            # gsi=iter_metrics.last('gsensis'),
-            # gsp=iter_metrics.last('gspecs'),
-            # tsi=iter_metrics.last('tsensis'),
-            # tsp=iter_metrics.last('tspecs'),
-            # loss=iter_metrics.last('losses'),
-            ))
+        pp('epoch[{ep}]:{i}/{I} iou:{c.pjac:.4f} acc:{c.pdice:.4f} lr:{lr:.4f} ({t})'.format(
+            ep=epoch, i=i+1, I=iter_count, lr=lr, t=now_str(), loss=loss.item(), c=coef))
         loss.backward()
         optimizer.step()
-    pp('epoch[{ep}]:Done. iou:{iou:.4f} acc:{acc:.4f} loss:{loss:.4f} ({t})'.format(
-        ep=epoch,
-        iou=iter_metrics.avg('jacs'),
-        acc=iter_metrics.avg('pdices'),
-        loss=iter_metrics.avg('losses'),
-        # gsi=iter_metrics.avg('gsensis'),
-        # gsp=iter_metrics.avg('gspecs'),
-        # tsi=iter_metrics.avg('tsensis'),
-        # tsp=iter_metrics.avg('tspecs'),
-        t=now_str()))
+    pp('epoch[{ep}]:Done. iou:{c.pjac:.4f} acc:{c.pdice:.4f} gsi:{c.gsensi:.4f} gsp:{c.gspec:.4f} tsi:{c.tsensi:.4f} tsp:{c.tspec:.4f} loss:{loss:.4f} lr:{lr:.4f} ({t})'.format(
+        ep=epoch, t=now_str(), lr=lr, loss=iter_metrics.avg('losses'), c=iter_metrics.avg_coef()
+        ))
+    print()
     weight_path = os.path.join(DEST_DIR, f'{Model.__name__.lower()}_{epoch}.pt')
     weights = model.module.cpu().state_dict() if USE_MULTI_GPU else model.cpu().state_dict()
-    metrics.append_metrics(iter_metrics)
+    metrics.append_nested_metrics(iter_metrics)
     store.set_states(weights, optimizer.state_dict(), metrics.state_dict())
     store.save(weight_path)
     print(f'save weights to {weight_path}')

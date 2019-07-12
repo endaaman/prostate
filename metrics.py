@@ -60,17 +60,22 @@ class Metrics():
         self.data['tsensis'].append(tsensi)
         self.data['tspecs'].append(tspec)
 
-    def get_avg_values(self):
-        return Coef(*[np.average(self.data[key]) for key in PLURAL_KEYS])
-
     def append_nested_metrics(self, metrics):
-        self.append_entry(*metrics.get_avg_values())
+        loss = metrics.avg_loss()
+        coef = metrics.avg_coef()
+        self.append_values(loss, *coef)
 
     def load_state_dict(self, data):
         self.data = copy.deepcopy(data)
 
     def state_dict(self):
         return copy.deepcopy(self.data)
+
+    def avg_loss(self):
+        return np.average(self.data['losses'])
+
+    def last_loss(self):
+        return self.data['losses'][-1]
 
     def avg_coef(self):
         l = []
