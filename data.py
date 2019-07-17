@@ -14,20 +14,24 @@ class BaseDataset(Dataset):
             raise FileNotFoundError(ENOENT, os.strerror(ENOENT), name)
         return raw
 
-    def __init__(self, base_dir='./train', transform_x=None, transform_y=None, one=False):
-        self.transform_x = transform_x
-        self.transform_y = transform_y
-        file_names = sorted(os.listdir(f'{base_dir}/y'))
-        self.names = []
-        self.x_raws = []
-        self.y_raws = []
+    def read_images(self, target_dir, one=False):
+        names = []
+        x_raws = []
+        y_raws = []
+        file_names = sorted(os.listdir(os.path.join(target_dir, 'y')))
         for file_name in file_names:
             base_name, ext_name = os.path.splitext(file_name)
-            self.x_raws.append(self.read_image(f'{base_dir}/x/{base_name}.jpg'))
-            self.y_raws.append(self.read_image(f'{base_dir}/y/{base_name}.png'))
-            self.names.append(base_name)
+            x_raws.append(self.read_image(os.path.join(target_dir, 'x', f'{base_name}.jpg')))
+            y_raws.append(self.read_image(os.path.join(target_dir, 'y', f'{base_name}.png')))
+            names.append(base_name)
             if one:
                 break
+        return x_raws, y_raws, names
+
+    def __init__(self, target_dir='./train', transform_x=None, transform_y=None, one=False):
+        self.transform_x = transform_x
+        self.transform_y = transform_y
+        self.x_raws, self.y_raws, self.names = self.read_images(target_dir, one)
 
     def transform(self, x, y):
         if self.transform_x:
@@ -103,6 +107,11 @@ class ValidationDataset(BaseDataset):
     def __init__(self, max_size, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.max_size = max_size
+        x_raws, y_raws, names = self.read_images('./validation', False)
+        self.is_train_flags = [True] * len(self.names) + [False] * len(names)
+        self.x_raws += x_raws
+        self.y_raws += y_raws
+        self.names += names
 
     def __len__(self):
         return len(self.y_raws)
@@ -125,4 +134,4 @@ class ValidationDataset(BaseDataset):
                 y_data[-1].append(y_raw[pos[1]:pos[1]+h, pos[0]:pos[0]+w].copy())
                 pos[0] += w
             pos[1] += h
-        return x_data, y_data, self.names[i]
+        return (self.names[i], x_raw, y_raw, x_data, y_data, self.is_train_flags[i])

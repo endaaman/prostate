@@ -79,6 +79,8 @@ if __name__ == '__main__':
     plot_line(plt, metrics.get('tsensis'), 'tumor sensi')
     plot_line(plt, metrics.get('tspecs'), 'tumor specs')
 
+    print(metrics.last_coef())
+
     plt.xticks(list(range(0, epoch)))
     plt.yticks(np.arange(0, 11) / 10)
     plt.grid(True)

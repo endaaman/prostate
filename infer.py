@@ -11,10 +11,9 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 
 from models import get_model
 from store import Store
+from formula import *
 from utils import now_str, curry, to_heatmap, overlay_transparent
 
-
-NUM_CLASSES = 5
 
 parser = argparse.ArgumentParser()
 parser.add_argument('input')
@@ -35,7 +34,7 @@ USE_MULTI_GPU = USE_GPU and torch.cuda.device_count() > 1
 DEST_DIR = os.path.join(DEST_BASE_DIR, MODEL_NAME)
 
 mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
-print(f'Preparing MODEL:{MODEL_NAME} MODE:{mode} NUM_CLASSES:{NUM_CLASSES} TARGET:{INPUT_PATH} ({time_str()})')
+print(f'Preparing MODEL:{MODEL_NAME} MODE:{mode} NUM_CLASSES:{NUM_CLASSES} TARGET:{INPUT_PATH} ({now_str()})')
 
 
 def add_padding(img):

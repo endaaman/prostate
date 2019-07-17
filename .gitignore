@@ -1,5 +1,7 @@
 train/
+validation/
 inputs/
+report/
 tmp/
 out/
 

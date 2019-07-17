@@ -32,6 +32,17 @@ def calc_coef(outputs, labels):
     tsensi, tspec = inspection_accuracy(output_tumors, label_tumors)
     return Coef(dice, jac, pdice, pjac, gsensi, gspec, tsensi, tspec)
 
+def coef_to_str(coef):
+    l = []
+    for c, v in coef._asdict().items():
+        l.append(f'{c}={v:.3f}')
+    return ' '.join(l)
+
+def safe_average(data):
+    if len(data) > 0:
+        return np.average(data)
+    else:
+        return 0.0
 
 class Metrics():
     def __init__(self):
@@ -60,10 +71,9 @@ class Metrics():
         self.data['tsensis'].append(tsensi)
         self.data['tspecs'].append(tspec)
 
-    def append_nested_metrics(self, metrics):
-        loss = metrics.avg_loss()
-        coef = metrics.avg_coef()
-        self.append_values(loss, *coef)
+    def append_nested_metrics(self, nested):
+        for key in PLURAL_KEYS:
+            self.data[key] += nested.data[key]
 
     def load_state_dict(self, data):
         self.data = copy.deepcopy(data)
@@ -72,7 +82,7 @@ class Metrics():
         return copy.deepcopy(self.data)
 
     def avg_loss(self):
-        return np.average(self.data['losses'])
+        return safe_average(self.data['losses'])
 
     def last_loss(self):
         return self.data['losses'][-1]
@@ -80,7 +90,7 @@ class Metrics():
     def avg_coef(self):
         l = []
         for i, p in enumerate(PLURAL_KEYS[1:]):
-            l.append(np.average(self.data[p]))
+            l.append(safe_average(self.data[p]))
         return Coef(*l)
 
     def last_coef(self):
@@ -90,7 +100,7 @@ class Metrics():
         return Coef(*l)
 
     def avg(self, key):
-        return np.average(self.data[key])
+        return safe_average(self.data[key])
 
     def last(self, key):
         return self.data[key][-1]
