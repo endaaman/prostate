@@ -29,6 +29,7 @@ parser.add_argument('-m', '--model', default='unet11')
 parser.add_argument('-d', '--dest', default='weights')
 parser.add_argument('--num-workers', type=int, default=4)
 parser.add_argument('--cpu', action="store_true")
+parser.add_argument('--one', action="store_true")
 args = parser.parse_args()
 
 STARTING_WEIGHT = args.weight
@@ -38,6 +39,7 @@ EPOCH_COUNT = args.epoch
 TILE_SIZE = args.tile
 MODEL_NAME = args.model
 DEST_BASE_DIR = args.dest
+ONE = args.one
 
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and torch.cuda.device_count() > 1
@@ -91,7 +93,8 @@ data_set = TrainingDataset(
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ]),
         transform_y = transform_y,
-        tile_size=TILE_SIZE)
+        tile_size=TILE_SIZE,
+        one=ONE)
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
 
@@ -103,9 +106,9 @@ optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 if store.optims:
     optimizer.load_state_dict(store.optims)
 scheduler = LambdaLR(optimizer, lr_lambda=lr_func_exp, last_epoch=epoch if store.optims else -1)
-# criterion = nn.BCELoss()
+criterion = nn.BCELoss()
 # criterion = nn.BCEWithLogitsLoss()
-criterion = CrossEntropyLoss2d()
+# criterion = CrossEntropyLoss2d()
 
 metrics = Metrics()
 if store.metrics:

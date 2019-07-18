@@ -5,7 +5,7 @@ train_models () {
   tile=$1
   batch=$2
   epoch=30
-  dest="weights/gen2/$tile"
+  dest="weights/gen3/$tile"
 
   models=(
     "unet11"
@@ -19,7 +19,8 @@ train_models () {
     "albunet_n"
   )
   for model in "${models[@]}" ; do
-    python train.py -m "${model}" -b $batch -e $epoch --tile $tile --dest $dest
+    (set -x; echo python train.py \
+      -m "${model}" -b $batch -e $epoch --tile $tile --dest $dest)
   done
 }
 

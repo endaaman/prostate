@@ -9,8 +9,8 @@ from utils import curry, pack
 
 
 # activation = nn.LogSoftmax(dim=1)
-activation = nn.Softmax2d()
-# activation = torch.sigmoid
+# activation = nn.Softmax2d()
+activation = torch.sigmoid
 # activation = lambda x: x
 
 

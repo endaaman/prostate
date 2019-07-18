@@ -10,7 +10,7 @@ INDEX_MAP = np.array([
     IDX_GLEASON_3, # BG0: cyan
     IDX_GLEASON_5, # 00R: red
     IDX_NORMAL,    # B0R: purple
-    IDX_GLEASON_5, # 0GR: yellow
+    IDX_GLEASON_4, # 0GR: yellow
     IDX_NONE,      # BGR: white
 ])
 NUM_CLASSES = len(np.unique(INDEX_MAP))
