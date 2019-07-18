@@ -19,7 +19,7 @@ for size in "${sizes[@]}" ; do
     (set -x; python validate.py \
       -m "${model}" \
       -w "weights/gen2/${size}/${model}/${model}_30.pt" \
-      --dest "report/${size}" \
+      --dest "report/gen3/${size}" \
       --cpu --size 3000 \
       )
   done
