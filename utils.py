@@ -13,7 +13,7 @@ class CrossEntropyLoss2d(nn.Module):
         self.loss_fn = nn.NLLLoss()
 
     def forward(self, x, y):
-        x = x.permute(0, 2, 3, 1).contiguous().view(-1, NUM_CLASSES).log()
+        x = (x.permute(0, 2, 3, 1).contiguous().view(-1, NUM_CLASSES) + 1e-24).log()
         _, y = torch.max(y.permute(0, 2, 3, 1).contiguous().view(-1, NUM_CLASSES), -1)
         return self.loss_fn(x, y)
 
