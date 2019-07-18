@@ -77,13 +77,12 @@ if USE_MULTI_GPU:
 
 
 # DATA
-I = np.identity(NUM_CLASSES, dtype=np.float32)
 def transform_y(arr):
     arr[arr > 0] = 1 # to 1bit each color
     arr = np.sum(np.multiply(arr, (1, 2, 4, 8)), axis=2) # to 4bit each pixel
     arr = arr - 7 # to 3bit + 1
     arr[arr < 0] = 0 # fill overrun
-    return ToTensor()(I[INDEX_MAP[arr]])
+    return ToTensor()(INDEX_MAP[arr])
 
 data_set = TrainingDataset(
         transform_x = Compose([
@@ -103,8 +102,9 @@ optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 if store.optims:
     optimizer.load_state_dict(store.optims)
 scheduler = LambdaLR(optimizer, lr_lambda=lr_func_exp, last_epoch=epoch if store.optims else -1)
-criterion = nn.BCELoss()
+# criterion = nn.BCELoss()
 # criterion = nn.BCEWithLogitsLoss()
+criterion = nn.CrossEntropyLoss()
 
 metrics = Metrics()
 if store.metrics:

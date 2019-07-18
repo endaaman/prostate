@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import torch
 
+
 def now_str():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
