@@ -3,6 +3,19 @@ import datetime
 import numpy as np
 import cv2
 import torch
+import torch.nn as nn
+
+from formula import *
+
+class CrossEntropyLoss2d(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.loss_fn = nn.NLLLoss()
+
+    def forward(self, x, y):
+        x = x.permute(0, 3, 1, 2).contiguous().view(-1, NUM_CLASSES).log()
+        _, y = torch.max(y.view(-1, NUM_CLASSES), -1)
+        return self.loss_fn(x, y)
 
 
 def now_str():

@@ -9,9 +9,9 @@ from utils import curry, pack
 
 
 # activation = nn.LogSoftmax(dim=1)
-# activation = nn.Softmax2d()
+activation = nn.Softmax2d()
 # activation = torch.sigmoid
-activation = lambda x: x
+# activation = lambda x: x
 
 
 class ConvRelu(nn.Module):

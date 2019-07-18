@@ -108,7 +108,7 @@ class Report:
 report = Report({'model': MODEL_NAME, 'size': SIZE, 'mode': mode, 'weight': WEIGHT_PATH})
 
 train_metrics = Metrics()
-validation_metrics = Metrics()
+val_metrics = Metrics()
 
 dataset = ValidationDataset(max_size=SIZE, one=ONE)
 print(f'Start validation')
@@ -142,20 +142,24 @@ for (name, x_raw, y_raw, x_data, y_data, is_train) in dataset:
     masked_img = overlay_transparent(x_raw, output_img) # TODO: overlay transparented mask
     os.makedirs(DEST_DIR, exist_ok=True)
     cv2.imwrite(os.path.join(DEST_DIR, f'{name}.jpg'), masked_img)
-    m = train_metrics if is_train else validation_metrics
+    m = train_metrics if is_train else val_metrics
     m.append_nested_metrics(metrics)
-    report.append(name, metrics.avg_coef(), 'train' if is_train else 'validation')
+    report.append(name, metrics.avg_coef(), 'train' if is_train else 'val')
     report.save()
     pp(f'{name}: {coef_to_str(coef)} ({now_str()})')
     print('')
 
-whole_metrics = Metrics()
-whole_metrics.append_nested_metrics(train_metrics)
-whole_metrics.append_nested_metrics(validation_metrics)
+all_metrics = Metrics()
+all_metrics.append_nested_metrics(train_metrics)
+all_metrics.append_nested_metrics(val_metrics)
 
 report.prepend('train', train_metrics.avg_coef(), 'mean train')
-report.prepend('validation', validation_metrics.avg_coef(), 'mean validation')
-report.prepend('all', whole_metrics.avg_coef(), 'mean all')
+report.prepend('val', val_metrics.avg_coef(), 'mean val')
+report.prepend('all', all_metrics.avg_coef(), 'mean all')
+
 report.save()
+print(f'train: {coef_to_str(train_metrics.avg_coef())}')
+print(f'val: {coef_to_str(val_metrics.avg_coef())}')
+print(f'all: {coef_to_str(all_metrics.avg_coef())}')
 print(f'Save report to. {report.path} ({now_str()})')
 print()

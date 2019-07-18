@@ -18,7 +18,7 @@ from data import TrainingDataset
 from store import Store
 from metrics import Metrics, calc_coef
 from formula import *
-from utils import now_str, pp
+from utils import now_str, pp, CrossEntropyLoss2d
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-w', '--weight')
@@ -77,12 +77,13 @@ if USE_MULTI_GPU:
 
 
 # DATA
+I = np.identity(NUM_CLASSES, dtype=np.float32)
 def transform_y(arr):
     arr[arr > 0] = 1 # to 1bit each color
     arr = np.sum(np.multiply(arr, (1, 2, 4, 8)), axis=2) # to 4bit each pixel
     arr = arr - 7 # to 3bit + 1
     arr[arr < 0] = 0 # fill overrun
-    return ToTensor()(INDEX_MAP[arr])
+    return ToTensor()(I[INDEX_MAP[arr]])
 
 data_set = TrainingDataset(
         transform_x = Compose([
@@ -104,7 +105,7 @@ if store.optims:
 scheduler = LambdaLR(optimizer, lr_lambda=lr_func_exp, last_epoch=epoch if store.optims else -1)
 # criterion = nn.BCELoss()
 # criterion = nn.BCEWithLogitsLoss()
-criterion = nn.CrossEntropyLoss()
+criterion = CrossEntropyLoss2d()
 
 metrics = Metrics()
 if store.metrics:
@@ -125,7 +126,7 @@ while epoch < first_epoch + EPOCH_COUNT:
         coef = calc_coef(outputs, labels)
         iter_metrics.append_loss(loss.item())
         iter_metrics.append_coef(coef)
-        pp('epoch[{ep}]:{i}/{I} iou:{c.pjac:.4f} acc:{c.pdice:.4f} lr:{lr:.4f} ({t})'.format(
+        pp('epoch[{ep}]:{i}/{I} iou:{c.pjac:.4f} acc:{c.pdice:.4f} loss:{loss:.4f} lr:{lr:.4f} ({t})'.format(
             ep=epoch, i=i+1, I=iter_count, lr=lr, t=now_str(), loss=loss.item(), c=coef))
         loss.backward()
         optimizer.step()
