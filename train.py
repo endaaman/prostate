@@ -106,9 +106,9 @@ optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 if store.optims:
     optimizer.load_state_dict(store.optims)
 scheduler = LambdaLR(optimizer, lr_lambda=lr_func_exp, last_epoch=epoch if store.optims else -1)
-criterion = nn.BCELoss()
+# criterion = nn.BCELoss()
 # criterion = nn.BCEWithLogitsLoss()
-# criterion = CrossEntropyLoss2d()
+criterion = CrossEntropyLoss2d()
 
 metrics = Metrics()
 if store.metrics:
