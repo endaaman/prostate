@@ -1,4 +1,5 @@
 import os
+import math
 from errno import ENOENT
 import numpy as np
 import cv2
@@ -63,7 +64,8 @@ class TrainingDataset(BaseDataset):
     def select(self):
         p = []
         for i in self.y_raws:
-            p.append((i.shape[0] - self.tile_size) * (i.shape[1] - self.tile_size))
+            # p.append((i.shape[0] - self.tile_size) * (i.shape[1] - self.tile_size))
+            p.append(math.sqrt((i.shape[0] - self.tile_size) * (i.shape[1] - self.tile_size)))
         p = np.array(p / np.sum(p))
         use_patch = False
         size = self.tile_size
