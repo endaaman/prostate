@@ -59,7 +59,7 @@ class TrainingDataset(BaseDataset):
         return i
 
     def check_available(self, arr):
-        return not self.stricted_roi or np.any(arr != 0)
+        return (not self.stricted_roi) and np.any(arr != 0)
 
     def select(self):
         p = []

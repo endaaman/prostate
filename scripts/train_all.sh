@@ -8,22 +8,22 @@ train_models () {
   dest="weights/gen3/$tile"
 
   models=(
-    "unet11"
-    "unet11b"
-    "unet11n"
-    "unet16"
     "unet16b"
     "unet16n"
+    "unet16"
     "albunet"
-    "albunet_b"
     "albunet_n"
+    "albunet_b"
+    "unet11b"
+    "unet11n"
+    "unet11"
   )
   for model in "${models[@]}" ; do
-    (set -x; echo python train.py \
+    (set -x; python train.py \
       -m "${model}" -b $batch -e $epoch --tile $tile --dest $dest)
   done
 }
 
-train_models 256 32
-train_models 512 8
 train_models 768 4
+train_models 512 8
+train_models 256 32
