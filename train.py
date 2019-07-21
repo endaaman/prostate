@@ -14,7 +14,7 @@ from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
 
 from models import get_model
-from data import TrainingDataset
+from datasets import TrainingDataset
 from store import Store
 from metrics import Metrics, calc_coef
 from formula import *

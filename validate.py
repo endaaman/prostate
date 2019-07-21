@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from torchvision.transforms import ToTensor, Normalize, Compose
 
 from models import get_model
-from data import ValidationDataset
+from datasets import ValidationDataset
 from store import Store
 from metrics import Metrics, calc_coef, coef_to_str
 from utils import now_str, pp, overlay_transparent
