@@ -16,7 +16,7 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 from models import get_model
 from datasets import TrainingDataset
 from store import Store
-from metrics import Metrics, calc_coef
+from metrics import Metrics, Coef
 from formula import *
 from utils import now_str, pp, CrossEntropyLoss2d
 
@@ -126,7 +126,7 @@ while epoch < first_epoch + EPOCH_COUNT:
         optimizer.zero_grad()
         outputs = model(inputs).to(device)
         loss = criterion(outputs, labels)
-        coef = calc_coef(outputs, labels)
+        coef = Coef.calc(outputs, labels)
         iter_metrics.append_loss(loss.item())
         iter_metrics.append_coef(coef)
         pp('epoch[{ep}]:{i}/{I} iou:{c.pjac:.4f} acc:{c.pdice:.4f} loss:{loss:.4f} lr:{lr:.4f} ({t})'.format(

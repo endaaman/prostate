@@ -14,7 +14,7 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 from models import get_model
 from datasets import ValidationDataset
 from store import Store
-from metrics import Metrics, calc_coef, coef_to_str
+from metrics import Metrics, Coef
 from utils import now_str, pp, overlay_transparent
 from formula import *
 
@@ -133,10 +133,10 @@ for item in dataset:
             output_arr = remove_padding(output_arr, original_dims)
             output_tensor = torch.unsqueeze(torch.from_numpy(output_arr).permute(2, 0, 1), dim=0).to(device)
             label_tensor = torch.unsqueeze(torch.from_numpy(label_arr).permute(2, 0, 1), dim=0).to(device)
-            coef = calc_coef(output_tensor, label_tensor)
+            coef = Coef.calc(output_tensor, label_tensor)
             output_img_tiles.append(output_arr)
             metrics.append_coef(coef)
-            pp(f'Process {item.name} {x},{y}/{len(row)-1},{len(splitted)-1} {coef_to_str(coef)} ({now_str()})')
+            pp(f'Process {item.name} {x},{y}/{len(row)-1},{len(splitted)-1} {coef.to_str()} ({now_str()})')
             gc.collect()
         output_img_rows.append(cv2.hconcat(output_img_tiles))
     output_img = label_to_img(cv2.vconcat(output_img_rows), alpha=True)
@@ -147,7 +147,7 @@ for item in dataset:
     m.append_nested_metrics(metrics)
     report.append(item.name, metrics.avg_coef(), 'train' if item.is_train else 'val')
     report.save()
-    pp(f'{item.name}: {coef_to_str(coef)} ({now_str()})')
+    pp(f'{item.name}: {coef.to_str()} ({now_str()})')
     print('')
 
 all_metrics = Metrics()
@@ -159,8 +159,8 @@ report.prepend('val', val_metrics.avg_coef(), 'mean val')
 report.prepend('all', all_metrics.avg_coef(), 'mean all')
 
 report.save()
-print(f'train: {coef_to_str(train_metrics.avg_coef())}')
-print(f'val: {coef_to_str(val_metrics.avg_coef())}')
-print(f'all: {coef_to_str(all_metrics.avg_coef())}')
+print(f'train: {train_metrics.avg_coef().to_str()}')
+print(f'val: {val_metrics.avg_coef().to_str()}')
+print(f'all: {all_metrics.avg_coef().to_str()}')
 print(f'Save report to. {report.path} ({now_str()})')
 print()

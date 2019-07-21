@@ -9,11 +9,9 @@ from formula import *
 from utils import revert_onehot, similarity_index, pixel_similarity_index, inspection_accuracy
 
 
-PLURAL_KEYS = ['losses', 'dices', 'jacs', 'pdices', 'pjacs', 'gsensis', 'gspecs', 'tsensis', 'tspecs',]
-SINGULAR_KEYS = ['loss', 'dice', 'jac', 'pdice', 'pjac', 'gsensi', 'gspec', 'tsensi', 'tspec',]
+PLURAL_KEYS = ['dices', 'jacs', 'pdices', 'pjacs', 'gsensis', 'gspecs', 'tsensis', 'tspecs', 'losses', ]
+SINGULAR_KEYS = ['dice', 'jac', 'pdice', 'pjac', 'gsensi', 'gspec', 'tsensi', 'tspec', 'loss', ]
 assert(len(PLURAL_KEYS) == len(SINGULAR_KEYS))
-
-Coef = namedtuple('Coef', SINGULAR_KEYS[1:])
 
 
 def calc_coef(outputs, labels):
@@ -38,6 +36,15 @@ def coef_to_str(coef):
         l.append(f'{c}={v:.3f}')
     return ' '.join(l)
 
+class Coef(namedtuple('Coef', SINGULAR_KEYS[:-1])):
+    @classmethod
+    def calc(cls, inputs, labels):
+        return calc_coef(outputs, labels)
+
+    def to_str(self):
+        return coef_to_str(self)
+
+
 def safe_average(data):
     if len(data) > 0:
         return np.average(data)
@@ -54,22 +61,9 @@ class Metrics():
         self.data['losses'].append(loss)
 
     def append_coef(self, coef):
-        for i, s in enumerate(SINGULAR_KEYS):
-            if i is 0:
-                continue
+        for i, s in enumerate(SINGULAR_KEYS[:-1]):
             p = PLURAL_KEYS[i]
             self.data[p].append(getattr(coef, s))
-
-    def append_values(self, loss, dice, jac, pdice, pjac, gsensi, gspec, tsensi, tspec):
-        self.data['losses'].append(loss)
-        self.data['dices'].append(dice)
-        self.data['jacs'].append(jac)
-        self.data['pdices'].append(pdice)
-        self.data['pjacs'].append(pjac)
-        self.data['gsensis'].append(gsensi)
-        self.data['gspecs'].append(gspec)
-        self.data['tsensis'].append(tsensi)
-        self.data['tspecs'].append(tspec)
 
     def append_nested_metrics(self, nested):
         for key in PLURAL_KEYS:
@@ -89,13 +83,13 @@ class Metrics():
 
     def avg_coef(self):
         l = []
-        for i, p in enumerate(PLURAL_KEYS[1:]):
+        for i, p in enumerate(PLURAL_KEYS[:-1]):
             l.append(safe_average(self.data[p]))
         return Coef(*l)
 
     def last_coef(self):
         l = []
-        for i, p in enumerate(PLURAL_KEYS[1:]):
+        for i, p in enumerate(PLURAL_KEYS[:-1]):
             l.append(self.data[p][-1])
         return Coef(*l)
 
