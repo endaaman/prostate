@@ -136,7 +136,7 @@ for item in dataset:
             coef = Coef.calc(output_tensor, label_tensor)
             output_img_tiles.append(output_arr)
             metrics.append_coef(coef)
-            pp(f'Process {item.name} {x},{y}/{len(row)-1},{len(splitted)-1} {coef.to_str()} ({now_str()})')
+            pp(f'Process {item.name} {x},{y}/{len(row)-1},{len(splitted)-1} iou:{coef.pjac:.4f} acc:{coef.pdice:.4f} ({now_str()})')
             gc.collect()
         output_img_rows.append(cv2.hconcat(output_img_tiles))
     output_img = label_to_img(cv2.vconcat(output_img_rows), alpha=True)
@@ -147,7 +147,7 @@ for item in dataset:
     m.append_nested_metrics(metrics)
     report.append(item.name, metrics.avg_coef(), 'train' if item.is_train else 'val')
     report.save()
-    pp(f'{item.name}: {coef.to_str()} ({now_str()})')
+    pp(f'{item.name}: {metrics.avg_coef().to_str()} ({now_str()})')
     print('')
 
 all_metrics = Metrics()

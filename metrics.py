@@ -38,7 +38,7 @@ def coef_to_str(coef):
 
 class Coef(namedtuple('Coef', SINGULAR_KEYS[:-1])):
     @classmethod
-    def calc(cls, inputs, labels):
+    def calc(cls, outputs, labels):
         return calc_coef(outputs, labels)
 
     def to_str(self):
