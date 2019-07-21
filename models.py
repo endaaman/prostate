@@ -311,6 +311,7 @@ def list_models():
         m = M(num_classes=5)
         print('{}: {:,}'.format(M.__name__, count_model_params(m)))
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('command', nargs='?')

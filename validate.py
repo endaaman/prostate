@@ -110,16 +110,17 @@ report = Report({'model': MODEL_NAME, 'size': SIZE, 'mode': mode, 'weight': WEIG
 train_metrics = Metrics()
 val_metrics = Metrics()
 
-dataset = ValidationDataset(max_size=SIZE, one=ONE)
+dataset = ValidationDataset(one=ONE)
 print(f'Start validation')
-for (name, x_raw, y_raw, x_data, y_data, is_train) in dataset:
+for item in dataset:
     metrics = Metrics()
     output_img_rows = []
-    for y, row in enumerate(x_data):
+    splitted = item.get_splitted(SIZE)
+    for y, row in enumerate(splitted):
         output_img_tiles = []
-        for x, input_arr in enumerate(row):
-            label_arr = img_to_label(y_data[y][x])
-            input_arr, original_dims = add_padding(x_data[y][x])
+        for x, (input_img, label_img) in enumerate(row):
+            label_arr = img_to_label(label_img)
+            input_arr, original_dims = add_padding(input_img)
             pre_process = Compose([
                 ToTensor(),
                 Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -135,18 +136,18 @@ for (name, x_raw, y_raw, x_data, y_data, is_train) in dataset:
             coef = calc_coef(output_tensor, label_tensor)
             output_img_tiles.append(output_arr)
             metrics.append_coef(coef)
-            pp(f'Process {name} {x},{y}/{len(row)-1},{len(x_data)-1} {coef_to_str(coef)} ({now_str()})')
+            pp(f'Process {item.name} {x},{y}/{len(row)-1},{len(splitted)-1} {coef_to_str(coef)} ({now_str()})')
             gc.collect()
         output_img_rows.append(cv2.hconcat(output_img_tiles))
     output_img = label_to_img(cv2.vconcat(output_img_rows), alpha=True)
-    masked_img = overlay_transparent(x_raw, output_img) # TODO: overlay transparented mask
+    masked_img = overlay_transparent(item.x_raw, output_img) # TODO: overlay transparented mask
     os.makedirs(DEST_DIR, exist_ok=True)
-    cv2.imwrite(os.path.join(DEST_DIR, f'{name}.jpg'), masked_img)
-    m = train_metrics if is_train else val_metrics
+    cv2.imwrite(os.path.join(DEST_DIR, f'{item.name}.jpg'), masked_img)
+    m = train_metrics if item.is_train else val_metrics
     m.append_nested_metrics(metrics)
-    report.append(name, metrics.avg_coef(), 'train' if is_train else 'val')
+    report.append(item.name, metrics.avg_coef(), 'train' if item.is_train else 'val')
     report.save()
-    pp(f'{name}: {coef_to_str(coef)} ({now_str()})')
+    pp(f'{item.name}: {coef_to_str(coef)} ({now_str()})')
     print('')
 
 all_metrics = Metrics()

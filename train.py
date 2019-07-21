@@ -88,11 +88,11 @@ def transform_y(arr):
     return ToTensor()(I[INDEX_MAP[arr]])
 
 data_set = TrainingDataset(
-        transform_x = Compose([
+        transform_x=Compose([
             ToTensor(),
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ]),
-        transform_y = transform_y,
+        transform_y=transform_y,
         tile_size=TILE_SIZE,
         one=ONE)
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)

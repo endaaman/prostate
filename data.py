@@ -8,31 +8,55 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 from torch.utils.data import Dataset, DataLoader
 
 
+
+def read_image(name):
+    raw = cv2.imread(name, cv2.IMREAD_UNCHANGED)
+    if not type(raw) is np.ndarray:
+        raise FileNotFoundError(ENOENT, os.strerror(ENOENT), name)
+    return raw
+
+class Item():
+    def __init__(self, target_dir, file_name, is_train=True):
+        base_name, ext_name = os.path.splitext(file_name)
+        self.name = base_name
+        self.x_raw = read_image(os.path.join(target_dir, 'x', f'{base_name}.jpg'))
+        self.y_raw = read_image(os.path.join(target_dir, 'y', f'{base_name}.png'))
+        assert(self.x_raw.shape[:2] == self.y_raw.shape[:2])
+        self.is_train = is_train
+
+    def get_splitted(self, size):
+        H, W = self.x_raw.shape[:2]
+        Y = -(-self.x_raw.shape[0] // size)
+        X = -(-self.x_raw.shape[1] // size)
+        ww = [(W + i) // X for i in range(X)]
+        hh = [(H + i) // Y for i in range(Y)]
+        pairs = []
+        pos = [0, 0]
+        for y, h in enumerate(hh):
+            pos[0] = 0
+            pairs.append([])
+            for x, w in enumerate(ww):
+                x = self.x_raw[pos[1]:pos[1]+h, pos[0]:pos[0]+w].copy()
+                y = self.y_raw[pos[1]:pos[1]+h, pos[0]:pos[0]+w].copy()
+                pairs[-1].append((x, y))
+                pos[0] += w
+            pos[1] += h
+        return pairs
+
+def read_images(target_dir, one=False, is_train=True):
+    items = []
+    file_names = sorted(os.listdir(os.path.join(target_dir, 'y')))
+    for file_name in file_names:
+        items.append(Item(target_dir, file_name, is_train))
+        if one:
+            break
+    return items
+
 class BaseDataset(Dataset):
-    def read_image(self, name):
-        raw = cv2.imread(name, cv2.IMREAD_UNCHANGED)
-        if not type(raw) is np.ndarray:
-            raise FileNotFoundError(ENOENT, os.strerror(ENOENT), name)
-        return raw
-
-    def read_images(self, target_dir, one=False):
-        names = []
-        x_raws = []
-        y_raws = []
-        file_names = sorted(os.listdir(os.path.join(target_dir, 'y')))
-        for file_name in file_names:
-            base_name, ext_name = os.path.splitext(file_name)
-            x_raws.append(self.read_image(os.path.join(target_dir, 'x', f'{base_name}.jpg')))
-            y_raws.append(self.read_image(os.path.join(target_dir, 'y', f'{base_name}.png')))
-            names.append(base_name)
-            if one:
-                break
-        return x_raws, y_raws, names
-
     def __init__(self, target_dir='./train', transform_x=None, transform_y=None, one=False):
         self.transform_x = transform_x
         self.transform_y = transform_y
-        self.x_raws, self.y_raws, self.names = self.read_images(target_dir, one)
+        self.items = read_images(target_dir, one)
 
     def transform(self, x, y):
         if self.transform_x:
@@ -63,16 +87,16 @@ class TrainingDataset(BaseDataset):
 
     def select(self):
         p = []
-        for i in self.y_raws:
+        for i in self.items:
             # p.append((i.shape[0] - self.tile_size) * (i.shape[1] - self.tile_size))
-            p.append(math.sqrt((i.shape[0] - self.tile_size) * (i.shape[1] - self.tile_size)))
+            p.append(math.sqrt((i.x_raw.shape[0] - self.tile_size) * (i.x_raw.shape[1] - self.tile_size)))
         p = np.array(p / np.sum(p))
         use_patch = False
         size = self.tile_size
         while not use_patch:
-            i = np.random.choice(len(self.y_raws), 1, p=p)[0]
-            y_raw = self.y_raws[i]
-            x_raw = self.x_raws[i]
+            i = np.random.choice(len(self.items), 1, p=p)[0]
+            y_raw = self.items[i].y_raw
+            x_raw = self.items[i].x_raw
             image_h, image_w, _ = y_raw.shape
             left = np.random.randint(image_w - size)
             top = np.random.randint(image_h - size)
@@ -83,8 +107,8 @@ class TrainingDataset(BaseDataset):
 
     def __len__(self):
         l = 0
-        for i in self.y_raws:
-            l += int((i.shape[0] / self.tile_size) * (i.shape[1] / self.tile_size))
+        for i in self.items:
+            l += int((i.x_raw.shape[0] / self.tile_size) * (i.x_raw.shape[1] / self.tile_size))
         return l * 8
 
     def __getitem__(self, _idx):
@@ -106,34 +130,24 @@ class TrainingDataset(BaseDataset):
 
 
 class ValidationDataset(BaseDataset):
-    def __init__(self, max_size, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.max_size = max_size
-        x_raws, y_raws, names = self.read_images('./validation', False)
-        self.is_train_flags = [True] * len(self.names) + [False] * len(names)
-        self.x_raws += x_raws
-        self.y_raws += y_raws
-        self.names += names
+        val_dir = './validation'
+        if os.path.isdir(val_dir):
+            self.items += read_images(val_dir, one=False, is_train=True)
 
     def __len__(self):
-        return len(self.y_raws)
+        return len(self.items)
 
     def __getitem__(self, i):
-        x_raw, y_raw = self.x_raws[i], self.y_raws[i]
-        H, W = x_raw.shape[:2]
-        Y = -(-x_raw.shape[0] // self.max_size)
-        X = -(-x_raw.shape[1] // self.max_size)
-        ww = [(W + i) // X for i in range(X)]
-        hh = [(H + i) // Y for i in range(Y)]
-        x_data, y_data = [], []
-        pos = [0, 0]
-        for y, h in enumerate(hh):
-            pos[0] = 0
-            x_data.append([])
-            y_data.append([])
-            for x, w in enumerate(ww):
-                x_data[-1].append(x_raw[pos[1]:pos[1]+h, pos[0]:pos[0]+w].copy())
-                y_data[-1].append(y_raw[pos[1]:pos[1]+h, pos[0]:pos[0]+w].copy())
-                pos[0] += w
-            pos[1] += h
-        return (self.names[i], x_raw, y_raw, x_data, y_data, self.is_train_flags[i])
+        return self.items[i]
+
+if __name__ == '__main__':
+    ds = ValidationDataset(one=True)
+    for item in ds:
+        print(item.name, item.x_raw.shape)
+        for y, row in enumerate(item.get_splitted(1000)):
+            print(type(row))
+            for x, (input_arr, label_arr) in enumerate(row):
+                print(type(input_arr))
+                break
