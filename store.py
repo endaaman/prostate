@@ -67,21 +67,22 @@ if __name__ == '__main__':
     plt.figure(figsize=(max(epoch//1.5, 10), 10))
 
     name = os.path.splitext(os.path.basename(PATH))[0]
-    plt.title(name)
+    # plt.title(name)
+    plt.title('VGG16-Upsample-nearest-768')
 
     plot_line(plt, metrics.get('losses'), 'loss')
-    plot_line(plt, metrics.get('jacs'), 'IoU')
-    plot_line(plt, metrics.get('pjacs'), 'pIoU')
-    plot_line(plt, metrics.get('pdices'), 'acc')
+    # plot_line(plt, metrics.get('jacs'), 'IoU')
+    plot_line(plt, metrics.get('pjacs'), 'IoU')
+    # plot_line(plt, metrics.get('pdices'), 'acc')
 
-    plot_line(plt, metrics.get('gsensis'), 'gland sensi')
-    plot_line(plt, metrics.get('gspecs'), 'gland specs')
-    plot_line(plt, metrics.get('tsensis'), 'tumor sensi')
-    plot_line(plt, metrics.get('tspecs'), 'tumor specs')
+    plot_line(plt, metrics.get('gsensis'), 'gland sensitivity')
+    plot_line(plt, metrics.get('gspecs'), 'gland specificity')
+    plot_line(plt, metrics.get('tsensis'), 'tumor sensitivity')
+    plot_line(plt, metrics.get('tspecs'), 'tumor specificity')
 
     print(metrics.last_coef())
 
-    plt.xticks(list(range(0, epoch)))
+    # plt.xticks(list(range(0, epoch)))
     plt.yticks(np.arange(0, 11) / 10)
     plt.grid(True)
     plt.legend()
