@@ -14,9 +14,9 @@ from torchvision import datasets, models
 from torchvision.transforms import ToTensor, Normalize, Compose
 
 from models import get_model
-from data import TrainingDataset
+from datasets import TrainingDataset
 from store import Store
-from metrics import Metrics, calc_coef
+from metrics import Metrics, Coef
 from formula import *
 from utils import now_str, pp, CrossEntropyLoss2d
 
@@ -88,11 +88,11 @@ def transform_y(arr):
     return ToTensor()(I[INDEX_MAP[arr]])
 
 data_set = TrainingDataset(
-        transform_x = Compose([
+        transform_x=Compose([
             ToTensor(),
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ]),
-        transform_y = transform_y,
+        transform_y=transform_y,
         tile_size=TILE_SIZE,
         one=ONE)
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
@@ -126,7 +126,7 @@ while epoch < first_epoch + EPOCH_COUNT:
         optimizer.zero_grad()
         outputs = model(inputs).to(device)
         loss = criterion(outputs, labels)
-        coef = calc_coef(outputs, labels)
+        coef = Coef.calc(outputs, labels)
         iter_metrics.append_loss(loss.item())
         iter_metrics.append_coef(coef)
         pp('epoch[{ep}]:{i}/{I} iou:{c.pjac:.4f} acc:{c.pdice:.4f} loss:{loss:.4f} lr:{lr:.4f} ({t})'.format(
