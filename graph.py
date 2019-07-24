@@ -76,15 +76,21 @@ def show(f1):
             # if item['type'] == 'mean train':
             #     print('mean : ', coef.to_str())
             continue
+
+        print(item['name'])
+        print(coef.pjac)
+        print()
+        continue
+
         if item['type'] == 'train':
             m = train_metrics
         if item['type'] == 'val':
             m = val_metrics
         m.append_coef(coef)
 
-    print('train: ', train_metrics.avg_coef().to_str())
-    print('val  : ', val_metrics.avg_coef().to_str())
-    print()
+    # print('train: ', train_metrics.avg_coef().to_str())
+    # print('val  : ', val_metrics.avg_coef().to_str())
+    # print()
 
 
 def get_avg_coef(fp):
@@ -147,12 +153,15 @@ def list1():
 
 
 def list2():
+    training = False
     items = []
     labels = ['IoU', 'gland sensitivity',  'tumor sensitivity',  'gland specificity',  'tumor specificity', ]
     targets = ['pjac', 'gsensi', 'tsensi', 'gspec', 'tspec', ]
     for n in LIST:
-        train_coef, val_coef = get_avg_coef(f',/gen3/768/{n[0]}/report.json')
-        items.append([n[1]] + [getattr(train_coef, t) for t in targets])
+        p = f',/gen3/768/{n[0]}/report.json' if training else f',/gen3_val/768/{n[0]}/report.json'
+        train_coef, val_coef = get_avg_coef(p)
+        coef = train_coef if training else val_coef
+        items.append([n[1]] + [getattr(coef, t) for t in targets])
 
     # items = sorted(items, key=lambda x:x[1])
     x_position = np.arange(len(LIST))
@@ -163,7 +172,7 @@ def list2():
         ax.barh(x_position + i * w, [v[i+1] for v in items], height=w, label=labe)
 
     for x, item in zip(x_position, items):
-        plt.text(0.1, x - 0.1, item[0], va='bottom', ha='left')
+        plt.text(0.61, x - 0.1, item[0], va='bottom', ha='left')
         for i, v in enumerate(item[1:]):
             plt.text(v, x + i * w + w / 2, f'{v:.3f}', va='bottom', ha='left')
 
@@ -171,9 +180,22 @@ def list2():
     ax.invert_yaxis()
     ax.set_yticks([])
     ax.set_xticks(np.linspace(0.5, 1.1, 7))
-    ax.grid(axis='x')
+    ax.grid(axis='x', linestyle='dotted')
     ax.tick_params(axis='y', labelbottom=False)
+    plt.xlim(0.6, 1.0)
     plt.show()
 
 
-list2()
+def list3():
+    training = False
+    cc = []
+    for n in LIST:
+        p = f',/gen3/768/{n[0]}/report.json' if training else f',/gen3_val/768/{n[0]}/report.json'
+        train_coef, val_coef = get_avg_coef(p)
+        coef = train_coef if training else val_coef
+        print(n[0], coef.pjac)
+
+list3()
+
+# for n in LIST:
+#     show(f',/gen3_val/768/{n[0]}/report.json')
