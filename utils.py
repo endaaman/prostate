@@ -46,6 +46,25 @@ def revert_onehot(t):
     _, img = torch.max(t.contiguous().view(-1, num_classes), 1)
     return img
 
+
+def split_maxsize(img, maxsizes):
+    H, W = img.shape[:2]
+    Y = -(-H // maxsizes[1])
+    X = -(-W // maxsizes[0])
+    ww = [(W + i) // X for i in range(X)]
+    hh = [(H + i) // Y for i in range(Y)]
+    grid = []
+    pos = [0, 0]
+    for y, h in enumerate(hh):
+        pos[0] = 0
+        grid.append([])
+        for x, w in enumerate(ww):
+            x = img[pos[1]:pos[1]+h, pos[0]:pos[0]+w].copy()
+            grid[-1].append(x)
+            pos[0] += w
+        pos[1] += h
+    return grid
+
 def similarity_index(a, b, smooth=1.):
     a = a.contiguous().view(-1)
     b = b.contiguous().view(-1)

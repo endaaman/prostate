@@ -2,6 +2,7 @@ import os
 import sys
 import math
 import argparse
+import gc
 import numpy as np
 import cv2
 import torch
@@ -12,7 +13,7 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 from models import get_model
 from store import Store
 from formula import *
-from utils import now_str, curry, to_heatmap, overlay_transparent
+from utils import pp, now_str, curry, to_heatmap, overlay_transparent, split_maxsize
 
 
 parser = argparse.ArgumentParser()
@@ -20,6 +21,8 @@ parser.add_argument('input')
 parser.add_argument('-w', '--weight')
 parser.add_argument('-m', '--model')
 parser.add_argument('--cpu', action="store_true")
+parser.add_argument('-s', '--size', type=int, default=1000)
+parser.add_argument('-s2', '--size2', type=int, default=None)
 parser.add_argument('-d', '--dest', default='out')
 args = parser.parse_args()
 
@@ -27,6 +30,8 @@ INPUT_PATH = args.input
 WEIGHT_PATH = args.weight
 MODEL_NAME = args.model
 DEST_BASE_DIR = args.dest
+SIZE = args.size
+SIZE2 = args.size2 or SIZE
 
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and torch.cuda.device_count() > 1
@@ -34,8 +39,7 @@ USE_MULTI_GPU = USE_GPU and torch.cuda.device_count() > 1
 DEST_DIR = os.path.join(DEST_BASE_DIR, MODEL_NAME)
 
 mode = ('multi' if USE_MULTI_GPU else 'single') if USE_GPU else 'cpu'
-print(f'Preparing MODEL:{MODEL_NAME} MODE:{mode} NUM_CLASSES:{NUM_CLASSES} TARGET:{INPUT_PATH} ({now_str()})')
-
+print(f'Preparing MODEL:{MODEL_NAME} MODE:{mode} SIZE:{SIZE} TARGET:{INPUT_PATH} ({now_str()})')
 
 def add_padding(img):
     h, w = img.shape[0:2]
@@ -49,8 +53,7 @@ def add_padding(img):
     return new_arr, (left, top, left + w, top + h)
 
 
-def post_process(tensor, dims=None):
-    arr = np.transpose(tensor.numpy(), (1, 2, 0))
+def remove_padding(arr, dims=None):
     if dims:
         arr = arr[dims[1]:dims[3], dims[0]:dims[2]]
     row_sums = np.sum(arr, axis=2)
@@ -81,20 +84,31 @@ if USE_MULTI_GPU:
     model = torch.nn.DataParallel(model)
 
 input_img = cv2.imread(INPUT_PATH)
-padded_input_img, original_dims = add_padding(input_img)
-pre_process = Compose([
-    ToTensor(),
-    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-])
 
 print(f'Start inference')
-input_tensor = torch.unsqueeze(pre_process(padded_input_img).to(device), dim=0)
-with torch.no_grad():
-    output_tensor = model(input_tensor)
+grid = split_maxsize(input_img, (SIZE, SIZE2))
+output_img_rows = []
+for y, row in enumerate(grid):
+    output_img_tiles = []
+    for x, img in enumerate(row):
+        padded_input_img, original_dims = add_padding(img)
+        pp(f'Processing {x},{y}/{len(row)-1},{len(grid)-1} size:{padded_input_img.shape} ({now_str()})')
+        pre_process = Compose([
+            ToTensor(),
+            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+        input_tensor = torch.unsqueeze(pre_process(padded_input_img).to(device), dim=0)
+        with torch.no_grad():
+            output_tensor = model(input_tensor)
+        output_arr = output_tensor.data[0].cpu().numpy()
+        output_arr = remove_padding(np.transpose(output_arr, (1, 2, 0)), original_dims)
+        output_img_tiles.append(output_arr)
+        gc.collect()
+    output_img_rows.append(cv2.hconcat(output_img_tiles))
 
-mask_arr = post_process(output_tensor.data[0].cpu(), original_dims)
-print(f'Finished inference.')
-
+pp(f'Done process {INPUT_PATH}')
+print('')
+mask_arr = cv2.vconcat(output_img_rows)
 base_name = os.path.splitext(os.path.basename(INPUT_PATH))[0]
 output_dir = f'./{DEST_BASE_DIR}/{MODEL_NAME}/{base_name}'
 os.makedirs(output_dir, exist_ok=True)
@@ -108,6 +122,6 @@ for i in range(NUM_CLASSES):
     img = to_heatmap(mask_arr[:, :, i])
     cv2.imwrite(f'{output_dir}/heat_{i}.png', img)
     fused = overlay_transparent(input_img, img)
-    cv2.imwrite(f'{output_dir}/fused_{i}.png', fused)
+    cv2.imwrite(f'{output_dir}/fused_{i}.jpg', fused)
 
-print(f'Save images.')
+print(f'Save images.  ({now_str()})')
