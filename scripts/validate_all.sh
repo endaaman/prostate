@@ -12,15 +12,17 @@ models=(
   "albunet_n"
 )
 
-sizes=(768 512)
+sizes=(768)
 
 for size in "${sizes[@]}" ; do
   for model in "${models[@]}" ; do
+    dest="report/gen3_val/${size}"
     (set -x; python validate.py \
       -m "${model}" \
       -w "weights/gen3/${size}/${model}/${model}_30.pt" \
-      --dest "report/gen3/${size}" \
+      --dest $dest \
       --cpu --size 3000 \
+      --target val
       )
   done
 done

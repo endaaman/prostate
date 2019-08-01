@@ -53,10 +53,10 @@ def read_images(target_dir, one=False, is_train=True):
     return items
 
 class BaseDataset(Dataset):
-    def __init__(self, target_dir='./train', transform_x=None, transform_y=None, one=False):
+    def __init__(self, target_dir='./train', transform_x=None, transform_y=None, one=False, load_train=True):
         self.transform_x = transform_x
         self.transform_y = transform_y
-        self.items = read_images(target_dir, one)
+        self.items = read_images(target_dir, one) if load_train else []
 
     def transform(self, x, y):
         if self.transform_x:
@@ -130,11 +130,11 @@ class TrainingDataset(BaseDataset):
 
 
 class ValidationDataset(BaseDataset):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, load_val=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         val_dir = './validation'
-        if os.path.isdir(val_dir):
-            self.items += read_images(val_dir, one=False, is_train=True)
+        if load_val and os.path.isdir(val_dir):
+            self.items += read_images(val_dir, one=False, is_train=False)
 
     def __len__(self):
         return len(self.items)

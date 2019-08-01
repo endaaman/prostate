@@ -26,6 +26,7 @@ parser.add_argument('--cpu', action="store_true")
 parser.add_argument('-d', '--dest', default='report')
 parser.add_argument('-s', '--size', type=int, default=3000)
 parser.add_argument('--one', action="store_true")
+parser.add_argument('--target', default='all')
 args = parser.parse_args()
 
 WEIGHT_PATH = args.weight
@@ -33,6 +34,7 @@ MODEL_NAME = args.model
 DEST_BASE_DIR = args.dest
 ONE = args.one
 SIZE = args.size
+TARGET = args.target
 
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and torch.cuda.device_count() > 1
@@ -110,7 +112,9 @@ report = Report({'model': MODEL_NAME, 'size': SIZE, 'mode': mode, 'weight': WEIG
 train_metrics = Metrics()
 val_metrics = Metrics()
 
-dataset = ValidationDataset(one=ONE)
+load_train = TARGET == 'all' or TARGET == 'train'
+load_val = TARGET == 'all' or TARGET == 'val'
+dataset = ValidationDataset(one=ONE, load_train=load_train, load_val=load_val)
 print(f'Start validation')
 for item in dataset:
     metrics = Metrics()
@@ -144,8 +148,9 @@ for item in dataset:
     os.makedirs(DEST_DIR, exist_ok=True)
     cv2.imwrite(os.path.join(DEST_DIR, f'{item.name}.jpg'), masked_img)
     m = train_metrics if item.is_train else val_metrics
-    m.append_nested_metrics(metrics)
-    report.append(item.name, metrics.avg_coef(), 'train' if item.is_train else 'val')
+    avg_coef = metrics.avg_coef()
+    m.append_coef(avg_coef)
+    report.append(item.name, avg_coef, 'train' if item.is_train else 'val')
     report.save()
     pp(f'{item.name}: {metrics.avg_coef().to_str()} ({now_str()})')
     print('')
