@@ -7,6 +7,7 @@ import scipy.ndimage
 from torchvision.transforms import ToTensor, Normalize, Compose
 from torch.utils.data import Dataset, DataLoader
 
+from utils import pp
 
 
 def read_image(name):
@@ -16,11 +17,10 @@ def read_image(name):
     return raw
 
 class Item():
-    def __init__(self, target_dir, file_name, is_train=True):
-        base_name, ext_name = os.path.splitext(file_name)
-        self.name = base_name
-        self.x_raw = read_image(os.path.join(target_dir, 'x', f'{base_name}.jpg'))
-        self.y_raw = read_image(os.path.join(target_dir, 'y', f'{base_name}.png'))
+    def __init__(self, target_dir, name, is_train=True):
+        self.name = name
+        self.x_raw = read_image(os.path.join(target_dir, 'x', f'{name}.jpg'))
+        self.y_raw = read_image(os.path.join(target_dir, 'y', f'{name}.png'))
         assert(self.x_raw.shape[:2] == self.y_raw.shape[:2])
         self.is_train = is_train
 
@@ -47,9 +47,13 @@ def read_images(target_dir, one=False, is_train=True):
     items = []
     file_names = sorted(os.listdir(os.path.join(target_dir, 'y')))
     for file_name in file_names:
-        items.append(Item(target_dir, file_name, is_train))
+        base_name, ext_name = os.path.splitext(file_name)
+        pp(f'loading {base_name}')
+        items.append(Item(target_dir, base_name, is_train))
         if one:
             break
+    pp('All images have been loaded.')
+    print('')
     return items
 
 class BaseDataset(Dataset):
