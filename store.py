@@ -67,12 +67,12 @@ if __name__ == '__main__':
     plt.figure(figsize=(max(epoch//1.5, 10), 10))
 
     name = os.path.splitext(os.path.basename(PATH))[0]
-    # plt.title(name)
-    plt.title('VGG16-Upsample-nearest-768')
+    plt.title(name)
+    # plt.title('VGG16-Upsample-nearest-768')
 
-    plot_line(plt, metrics.get('losses'), 'loss')
+    plot_line(plt, metrics.get('losses'), 'loss', 10)
     # plot_line(plt, metrics.get('jacs'), 'IoU')
-    plot_line(plt, metrics.get('pjacs'), 'IoU')
+    plot_line(plt, metrics.get('pjacs'), 'IoU', -10)
     # plot_line(plt, metrics.get('pdices'), 'acc')
 
     plot_line(plt, metrics.get('gsensis'), 'gland sensitivity')
@@ -85,5 +85,5 @@ if __name__ == '__main__':
     # plt.xticks(list(range(0, epoch)))
     plt.yticks(np.arange(0, 11) / 10)
     plt.grid(True)
-    plt.legend()
+    plt.legend(bbox_to_anchor=(1.01, 1), loc='upper left', borderaxespad=0)
     plt.show()
