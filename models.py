@@ -316,7 +316,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('command', nargs='?')
     parser.add_argument('-m', '--model', type=str, default='unet11')
-    parser.add_argument('--tile', type=int, default=224)
+    parser.add_argument('--tile', type=int, default=448)
     args = parser.parse_args()
 
     if not args.command:
