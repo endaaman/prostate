@@ -46,21 +46,27 @@ class Item():
 def read_images(target_dir, one=False, is_train=True):
     items = []
     file_names = sorted(os.listdir(os.path.join(target_dir, 'y')))
+    count = len(file_names)
+    i = 0
     for file_name in file_names:
+        i += 1
         base_name, ext_name = os.path.splitext(file_name)
-        pp(f'loading {base_name}')
+        pp(f'loading {base_name} {i}/{count}')
         items.append(Item(target_dir, base_name, is_train))
         if one:
             break
-    pp('All images have been loaded.')
+    pp(f'All images in {target_dir} have been loaded.')
     print('')
     return items
 
 class BaseDataset(Dataset):
-    def __init__(self, target_dir='./train', transform_x=None, transform_y=None, one=False, load_train=True):
+    def __init__(self, transform_x=None, transform_y=None, target='train', load_train=True):
         self.transform_x = transform_x
         self.transform_y = transform_y
-        self.items = read_images(target_dir, one) if load_train else []
+        if target != 'validation':
+            self.items = read_images('./train', one=target == 'one') if load_train else []
+        if target == 'validation' or target == 'all':
+            self.items += read_images('./validation', one=False, is_train=False)
 
     def transform(self, x, y):
         if self.transform_x:
@@ -134,12 +140,6 @@ class TrainingDataset(BaseDataset):
 
 
 class ValidationDataset(BaseDataset):
-    def __init__(self, load_val=True, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        val_dir = './validation'
-        if load_val and os.path.isdir(val_dir):
-            self.items += read_images(val_dir, one=False, is_train=False)
-
     def __len__(self):
         return len(self.items)
 

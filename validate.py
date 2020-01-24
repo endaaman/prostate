@@ -25,7 +25,6 @@ parser.add_argument('-m', '--model')
 parser.add_argument('--cpu', action="store_true")
 parser.add_argument('-d', '--dest', default='report')
 parser.add_argument('-s', '--size', type=int, default=3000)
-parser.add_argument('--one', action="store_true")
 parser.add_argument('--target', default='all')
 args = parser.parse_args()
 
@@ -112,9 +111,7 @@ report = Report({'model': MODEL_NAME, 'size': SIZE, 'mode': mode, 'weight': WEIG
 train_metrics = Metrics()
 val_metrics = Metrics()
 
-load_train = TARGET == 'all' or TARGET == 'train'
-load_val = TARGET == 'all' or TARGET == 'val'
-dataset = ValidationDataset(one=ONE, load_train=load_train, load_val=load_val)
+dataset = ValidationDataset(target=TARGET)
 print(f'Start validation')
 for item in dataset:
     metrics = Metrics()

@@ -1,6 +1,7 @@
 import os
 import math
 import re
+import gc
 import argparse
 from enum import Enum, auto
 import numpy as np
@@ -29,7 +30,8 @@ parser.add_argument('-m', '--model', default='unet11')
 parser.add_argument('-d', '--dest', default='weights')
 parser.add_argument('--num-workers', type=int, default=4)
 parser.add_argument('--cpu', action="store_true")
-parser.add_argument('--one', action="store_true")
+parser.add_argument('--fake', action="store_true")
+parser.add_argument('--target', default='train')
 args = parser.parse_args()
 
 STARTING_WEIGHT = args.weight
@@ -39,7 +41,8 @@ EPOCH_COUNT = args.epoch
 TILE_SIZE = args.tile
 MODEL_NAME = args.model
 DEST_BASE_DIR = args.dest
-ONE = args.one
+TARGET = args.target
+FAKE = args.fake
 
 USE_GPU = not args.cpu and torch.cuda.is_available()
 USE_MULTI_GPU = USE_GPU and torch.cuda.device_count() > 1
@@ -94,7 +97,7 @@ data_set = TrainingDataset(
             ]),
         transform_y=transform_y,
         tile_size=TILE_SIZE,
-        one=ONE)
+        target=TARGET)
 data_loader = DataLoader(data_set, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
 
@@ -113,6 +116,10 @@ criterion = CrossEntropyLoss2d()
 metrics = Metrics()
 if store.metrics:
     metrics.load_state_dict(store.metrics)
+
+if FAKE:
+    print('STOP TRAINING')
+    exit(0)
 
 # LOOP
 print(f'Starting ({now_str()})')
@@ -136,6 +143,7 @@ while epoch < first_epoch + EPOCH_COUNT:
     pp('epoch[{ep}]:Done. iou:{c.pjac:.4f} acc:{c.pdice:.4f} gsi:{c.gsensi:.4f} gsp:{c.gspec:.4f} tsi:{c.tsensi:.4f} tsp:{c.tspec:.4f} loss:{loss:.4f} lr:{lr:.4f} ({t})'.format(
         ep=epoch, t=now_str(), lr=lr, loss=iter_metrics.avg('losses'), c=iter_metrics.avg_coef()
         ))
+    gc.collect()
     print()
     weight_path = os.path.join(DEST_DIR, f'{Model.__name__.lower()}_{epoch}.pt')
     weights = model.module.cpu().state_dict() if USE_MULTI_GPU else model.cpu().state_dict()
