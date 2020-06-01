@@ -94,14 +94,14 @@ def inspection_accuracy(pr_arr, gt_arr, smooth=1):
     specificity = (U - pr - gt + tp + smooth) / (U - gt + smooth)
     return sensitivity, specificity
 
-def to_heatmap(org, base_color=[0, 255, 0]):
+def to_heatmap(org, base_color=[0, 255, 0], alpha=127):
     z = np.zeros([*org.shape], dtype=np.uint8)
     c255 = np.full([*org.shape], 255, dtype=np.uint8)
     c200 = np.full([*org.shape], 200, dtype=np.uint8)
     vc = ((1 - org) * 170).astype(np.uint8)
     img = np.dstack((vc, c255, c255))
     img = cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
-    va = np.full([*org.shape], 127, dtype=np.uint8)
+    va = np.full([*org.shape], alpha, dtype=np.uint8)
     va[org < 0.1] = 0
     img = np.dstack((img, va))
     return img
