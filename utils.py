@@ -110,7 +110,7 @@ def overlay_transparent(background_img, img_to_overlay_t, x=0, y=0, overlay_size
     bg_img = background_img.copy()
     if overlay_size is not None:
         img_to_overlay_t = cv2.resize(img_to_overlay_t.copy(), overlay_size)
-    b,g,r,a = cv2.split(img_to_overlay_t)
+    b, g, r, a = cv2.split(img_to_overlay_t)
     overlay_color = cv2.merge((b, g, r))
     mask = cv2.medianBlur(a, 5)
     h, w, _ = overlay_color.shape
