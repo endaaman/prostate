@@ -1,24 +1,8 @@
-## recipe
+## Usage
 
-### crop
+Entrypoints are `train.py` are `infer.py`. Please check options for example by `python train.py -h`.
 
-```
-$ python crop.py '224/18_2500/x' 224 inputs/18_2500/1_0_tile.jpg
-```
-
-### train
-
-put files in appropriate dir and
-
-```
-$ python train.py
-```
-
-### inference
-
-```
-$ python infer.py ./weights/100.pt ./tmp/hoge.jpg
-```
+## Env
 
 ### export env
 
@@ -37,4 +21,3 @@ $ conda env update
 ```
 $ conda env create --name prostate --file ./environment.yml
 ```
-
